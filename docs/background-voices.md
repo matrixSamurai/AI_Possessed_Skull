@@ -4,6 +4,28 @@ MALACHI plays a shuffled bank of local short voice clips when a face or sustaine
 scene motion is detected. Use ElevenLabs voice IDs to generate them once; runtime
 playback does not call a paid API on every camera trigger.
 
+## Sound effect: whispering ghost wail
+
+For nonverbal wails/whispers, use the sound-effects generator rather than TTS voice IDs:
+
+```sh
+python -m malachi.ambience.generate_effects \
+  --prompt "Whispering ghost wail" --duration 5 --variations 3
+```
+
+This uses your existing ELEVENLABS_API_KEY and the official ElevenLabs sound-effects
+API (`eleven_text_to_sound_v2`), generating three cached variations with no voice ID.
+The prompt asks for atmospheric nonverbal horror ambience without intelligible speech
+or music. Actual style/quality must be auditioned locally. Generation uses sound-effect
+credits; playing cached files on detection uses no API calls. Each request has no automatic
+retries and a 60-second timeout; WAV output is validated, bounded and cached.
+
+The name is a **generation description**, not an identifier for downloading an existing
+saved effect. If you want the exact already-created "whispering ghost wail" clip, download
+its audio from ElevenLabs and provide it as a supported local WAV. MP3 files need conversion
+to 16 kHz mono PCM16 WAV before the existing player can load them. No new file-fetch API
+or sound-library identifier is invented from the title.
+
 ## Generate clips with your existing ElevenLabs key
 
 ```sh

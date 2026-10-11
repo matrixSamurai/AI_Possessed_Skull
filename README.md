@@ -100,11 +100,15 @@ for agent configuration, delivery behavior and service-side retention/usage deta
 
 ## Scary background voices
 
-Use a bank of local WAV clips, or generate them once with your ElevenLabs voice IDs:
+Use local WAV clips or generate scary nonverbal sound effects once:
 
 ```sh
-python -m malachi.ambience.generate --voice-id YOUR_VOICE_ID --phrase "Who dares enter?"
+python -m malachi.ambience.generate_effects --prompt "Whispering ghost wail" --duration 5 --variations 3
 ```
+
+This uses your existing ElevenLabs key, with no voice ID. For spoken background phrases,
+use `python -m malachi.ambience.generate --voice-id YOUR_VOICE_ID --phrase "Who dares enter?"`.
+Sound-effect titles are generation prompts; exact saved effects require their audio file.
 
 Set AMBIENCE_ENABLED=true in .env and restart. Faces or sustained scene motion trigger
 25 seconds of shuffled low-volume voices, with rearming/cooldown rather than endless

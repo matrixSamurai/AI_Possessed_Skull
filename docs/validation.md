@@ -149,3 +149,15 @@ startup/shutdown passes. Mocked real SDK TTS serialization/cache reuse and mocke
 handover are tested, alongside motion, timers, shuffle, conversation pause/mix, ducking,
 agent-jaw independence and acoustic tail handling. Voice IDs/phrases and real Mac audio
 validation remain outstanding. The separate HTTP 400 image-upload issue is unresolved.
+
+## Nonverbal whispering ghost wail
+
+Added a dedicated ElevenLabs sound-effects generator after the user clarified that
+"whispering ghost wail" is an effect name rather than a TTS voice. It uses the existing
+key and official text_to_sound_effects.convert API with pcm_16000 output, caches bounded
+WAV variations, and reuses the detection/playback system. It generates from the description;
+it does not claim to retrieve an exact saved effect by name. No voice ID is required.
+
+**103 tests passed**, including official SDK sound-effect request serialization,
+variation cache separation, cached reuse and pre-request parameter validation.
+No live sound-effect generation or audible Mac playback was performed in the cloud.
