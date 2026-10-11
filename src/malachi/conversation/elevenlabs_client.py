@@ -83,10 +83,12 @@ class ElevenLabsClient:
                 )
             )
         except Exception as exc:
+            status = getattr(exc, "status_code", None)
+            status_hint = f" HTTP {status}" if status is not None else ""
             self.emit(
                 ConversationEvent(
                     kind="scene",
-                    detail=f"Image skipped ({type(exc).__name__}); enable agent file input and an image-capable LLM",
+                    detail=f"Image skipped ({type(exc).__name__}{status_hint}); check agent file input, model and upload permissions",
                 )
             )
         finally:
@@ -113,7 +115,8 @@ class ElevenLabsClient:
                 "type": "conversation_initiation_client_data",
                 "dynamic_variables": {
                     "visual_context": "A one-time camera image may arrive as an attachment. "
-                    "Before it arrives, no visual context is available; do not invent observations."
+                    "Use the attached image once received; this placeholder is not a scene description. "
+                    "Do not invent details if no image is available."
                 },
             }
             await ws.send(json.dumps(initiation))

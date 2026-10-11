@@ -106,3 +106,15 @@ the user's ElevenLabs account. API send success is not proof of model interpreta
 The image is uploaded remotely as a conversation file; no local image is persisted.
 A multimodal input can generate a conversational response and its turn ordering is
 best-effort. See docs/scene-context.md for limits, retention and setup.
+
+## Agent vision diagnostics
+
+Added a read-only `python -m malachi.diagnostics` command using the official agent GET
+API. It reports local upload enablement, declared file input, default LLM and presence
+of the legacy prompt variable, without printing keys/prompts or starting a session.
+Updated image instructions to request visible details when an actual image is available;
+removed the misleading connection-time 'no visual context' phrasing. Upload exceptions
+show HTTP status, not error body. **86 tests passed**, lint/format/diff checks passed.
+The user's Client data screenshot contains the compatibility placeholder; it does not
+establish successful file delivery or image-capable model selection. Actual root cause
+remains unconfirmed pending local delivery status and agent configuration output.

@@ -119,3 +119,31 @@ Actual agent/model support and image interpretation must be verified on your Mac
 
 Official SDK contracts inspected: ElevenLabs Python SDK 2.71.0 conversation file
 upload API, ConvAiFileUploadResponseModel, FileInputConfig and multimodal message class.
+
+## Read-only configuration diagnosis
+
+If the ghost says it cannot see or refuses to describe clothing, run this from the
+project root with the normal .venv and existing local ElevenLabs credentials:
+
+```sh
+python -m malachi.diagnostics
+```
+
+It prints whether local image uploads are enabled, the agent's declared file-input
+setting, selected default LLM, and whether its prompt references the old visual_context
+variable. It never prints the API key or full prompt, changes agent settings, uploads
+an image, or starts a conversation. A key may need permission to read agent configuration
+even if it can start voice sessions. Default settings are not proof of every workflow
+branch/model route's capability.
+
+Share that output plus the desktop dashboard's visual-context status to distinguish
+local-disabled/no-frame, REST-upload rejection, skipped delivery and model/prompt behavior.
+Image-upload errors now include a numeric HTTP status when supplied by the SDK, never
+its private error body. The photo instruction explicitly asks for one visible detail
+and an accurate answer to visual questions; it cannot make a text-only model see images.
+
+The ElevenLabs Client data panel's visual_context dynamic variable is a connection-time
+compatibility placeholder, not the image or an analysis result. File input arrives later
+as a separate multimodal conversation message. 'No client overrides' is expected: MALACHI
+does not override your selected model, prompt or agent configuration. Check attachment
+messages and the local delivery status instead of treating that panel as upload evidence.

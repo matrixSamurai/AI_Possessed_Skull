@@ -93,7 +93,7 @@ def test_documented_metadata_audio_interruption_ping_goodbye(monkeypatch, settin
     assert any(e.kind == "goodbye" for e in events)
     assert {"type": "pong", "event_id": 7} in sent
     assert sent[0]["type"] == "conversation_initiation_client_data"
-    assert "no visual context" in sent[0]["dynamic_variables"]["visual_context"]
+    assert "Use the attached image once received" in sent[0]["dynamic_variables"]["visual_context"]
     assert all("Goodbye" not in e.detail for e in events)
 
 
