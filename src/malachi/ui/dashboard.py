@@ -73,7 +73,7 @@ class Dashboard(QMainWindow):
         layout.addWidget(title)
         self.streaming = QLabel("OFFLINE • Local perception only")
         layout.addWidget(self.streaming)
-        self.scene_label = QLabel("GPT scene context: disabled (no image upload)")
+        self.scene_label = QLabel("ElevenLabs visual context: disabled (no image upload)")
         self.scene_label.setWordWrap(True)
         layout.addWidget(self.scene_label)
         panels = QHBoxLayout()
@@ -326,7 +326,7 @@ class Dashboard(QMainWindow):
             f"Audio buffer {audio_stats['buffer_ms']:.0f}ms  •  Device underruns {self.manager.audio.output_underruns}"
             f"  •  Interruptions {audio_stats['interruptions']}"
         )
-        self.scene_label.setText("GPT scene context: " + self.manager.scene_status)
+        self.scene_label.setText("ElevenLabs visual context: " + self.manager.scene_status)
         remote = self.settings.conversation_backend == "elevenlabs" and self.manager.audio.active
         self.streaming.setText(
             "● REMOTE AUDIO STREAM ACTIVE • ElevenLabs"

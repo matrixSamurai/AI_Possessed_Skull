@@ -9,7 +9,7 @@ mkdir -p "$XDG_CACHE_HOME" "$MPLCONFIGDIR"
 if [ ! -x /workspace/malachi-venv/bin/python ]; then
     python3 -m venv /workspace/malachi-venv
 fi
-/workspace/malachi-venv/bin/python -m pip install -c constraints-cloud-py312.txt -e '.[conversation,vision,dev]'
+/workspace/malachi-venv/bin/python -m pip install -c constraints-cloud-py312.txt -e '.[conversation,dev]'
 # Cloud has no audio devices. This native library validates loading, not live audio.
 if ! /workspace/malachi-venv/bin/python -c 'import sounddevice' >/dev/null 2>&1; then
     portaudio_source=$(mktemp -d /tmp/malachi-portaudio.XXXXXX)

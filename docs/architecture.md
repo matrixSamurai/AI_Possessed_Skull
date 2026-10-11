@@ -4,8 +4,9 @@
 flowchart LR
     Camera --> Capture[Camera worker]
     Capture --> Snapshot[One fresh snapshot at interaction start]
-    Snapshot --> GPT[Optional GPT scene description]
-    GPT --> Manager
+    Snapshot --> Manager
+    Manager --> Upload[ElevenLabs conversation file upload]
+    Upload --> Agent
     Capture --> Landmarker[Face Landmarker + solvePnP]
     Landmarker --> Tracks[Geometric face tracks]
     Tracks --> Behavior[Qt thread: deterministic behavior]
@@ -67,9 +68,11 @@ Speaker echo guard defaults on. It sends silence during pending/playback audio a
 300 ms after its scheduled audible end; this is half-duplex suppression, not AEC.
 Headphones plus guard disabled restore full-duplex user interruption.
 
-Optional scene context runs in the conversation worker before voice connection retries.
-A fresh camera snapshot is copied on activation; encoding and the OpenAI request happen
-outside the UI thread. The application does not request image analysis in mock/demo or
-vision-only workflows. Cancellation closes the async OpenAI request, then no voice
-connection starts. Descriptions are passed once through dynamic variables and a
-non-interrupting contextual update; images and descriptions are not persisted locally.
+Optional visual context is prepared in the conversation worker and uploaded only after
+voice metadata supplies an active conversation ID. The image task uses the official
+ElevenLabs async file API; it runs concurrently with the voice receive loop. A shared
+one-shot snapshot handle prevents repeat uploads across pre-connection retries and
+releases bytes when consumed. A documented multimodal message references the uploaded
+file at a speech pause; the ElevenLabs agent's image-capable backend LLM interprets it.
+No separate OpenAI request, key or SDK is used. See docs/scene-context.md for the
+service-side requirements and retention/turn-order caveats.

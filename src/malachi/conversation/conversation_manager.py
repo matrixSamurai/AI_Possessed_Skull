@@ -11,7 +11,7 @@ from malachi.conversation.audio_input import AudioDuplex
 class ConversationManager:
     """One worker per authorization. Bounded retries only before connection succeeds."""
 
-    def __init__(self, settings, client_factory=None, scene_factory=None):
+    def __init__(self, settings, client_factory=None):
         self.settings = settings
         self.events = queue.Queue(maxsize=512)
         self.jaws = queue.Queue(maxsize=256)
@@ -26,7 +26,6 @@ class ConversationManager:
         self.connected_at = None
         self.last_started = self.last_ended = None
         self.factory = client_factory
-        self.scene_factory = scene_factory
         self.scene_status = "Disabled"
         self.pending_frame = None
         self.mock_reply = threading.Event()
@@ -74,108 +73,75 @@ class ConversationManager:
             self.audio.stop()
             self.emit(ConversationEvent(kind="closed"))
 
-    async def _prepare_scene(self, frame):
-        if self.stop_event.is_set():
-            return ""
+    def _prepare_snapshot(self, frame):
         if not self.settings.vision_context_enabled:
             self.emit(ConversationEvent(kind="scene", detail="Disabled"))
-            return ""
-        if not self.settings.openai_api_key.get_secret_value():
-            self.emit(ConversationEvent(kind="scene", detail="Skipped: set local OPENAI_API_KEY"))
-            return ""
+            return None
         if frame is None:
             self.emit(ConversationEvent(kind="scene", detail="Skipped: no fresh camera snapshot"))
-            return ""
-        from malachi.vision.scene_context import SceneAnalyzer
+            return None
+        from malachi.vision.scene_context import PreparedSnapshot, encode_snapshot
 
-        self.emit(
-            ConversationEvent(kind="scene", detail="Uploading one snapshot to GPT for analysis")
-        )
-        task = None
         try:
-            analyzer = (self.scene_factory or SceneAnalyzer)(self.settings)
-            task = asyncio.create_task(analyzer.analyze(frame))
-            frame = None
-            loop = asyncio.get_running_loop()
-            deadline = loop.time() + self.settings.vision_context_timeout_seconds
-            while not task.done():
-                if self.stop_event.is_set():
-                    return ""
-                remaining = deadline - loop.time()
-                if remaining <= 0:
-                    self.emit(
-                        ConversationEvent(
-                            kind="scene", detail="Timed out; conversation continues without scene"
-                        )
-                    )
-                    return ""
-                await asyncio.wait({task}, timeout=min(0.05, remaining))
-            if self.stop_event.is_set():
-                return ""
-            text = task.result().strip()[:1200]
-            if not text:
-                raise ValueError("Empty description")
-            self.emit(
-                ConversationEvent(kind="scene", detail="Analysis ready; preparing agent context")
+            snapshot = PreparedSnapshot(
+                encode_snapshot(frame, self.settings.vision_context_max_image_side)
             )
-            return text
+            self.emit(ConversationEvent(kind="scene", detail="Snapshot ready for ElevenLabs"))
+            return snapshot
         except Exception as exc:
-            # Never log an image, description, key, or provider exception body.
             self.emit(
                 ConversationEvent(
-                    kind="scene",
-                    detail=f"Analysis skipped ({type(exc).__name__}); conversation continues",
+                    kind="scene", detail=f"Snapshot skipped ({type(exc).__name__}); voice continues"
                 )
             )
-            return ""
-        finally:
-            if task is not None:
-                if not task.done():
-                    task.cancel()
-                await asyncio.gather(task, return_exceptions=True)
+            return None
 
     async def _live(self, frame=None):
         from malachi.conversation.elevenlabs_client import ElevenLabsClient
 
-        scene = await self._prepare_scene(frame)
+        snapshot = self._prepare_snapshot(frame) if not self.stop_event.is_set() else None
         frame = None
         factory = self.factory or ElevenLabsClient
-        for attempt in range(3):
-            if self.stop_event.is_set():
-                return
-            try:
-                client = factory(self.settings, self.playback, self.audio, self.emit)
-                if scene:
-                    client.scene_context = scene
-                await client.run(self.stop_event)
-                return
-            except Exception as exc:
-                self.failures += 1
-                # Never log URLs, headers, credentials or exception bodies.
-                self.emit(
-                    ConversationEvent(kind="summary", detail=f"Connection: {type(exc).__name__}")
-                )
-                if (
-                    self.ever_connected
-                    or isinstance(exc, (ValueError, ImportError))
-                    or attempt == 2
-                ):
+        try:
+            for attempt in range(3):
+                if self.stop_event.is_set():
+                    return
+                try:
+                    client = factory(self.settings, self.playback, self.audio, self.emit)
+                    if snapshot is not None:
+                        client.snapshot = snapshot
+                    await client.run(self.stop_event)
+                    return
+                except Exception as exc:
+                    self.failures += 1
                     self.emit(
                         ConversationEvent(
-                            kind="error", detail="Conversation failed; see setup docs"
+                            kind="summary", detail=f"Connection: {type(exc).__name__}"
                         )
                     )
-                    return
-                # Auth and rate-limit errors are not blindly retried.
-                if getattr(exc, "status_code", None) in (401, 403, 429):
-                    self.emit(
-                        ConversationEvent(kind="error", detail="Authentication or rate limit")
-                    )
-                    return
-                for _ in range(10 * 2**attempt):
-                    if self.stop_event.is_set():
+                    if (
+                        self.ever_connected
+                        or isinstance(exc, (ValueError, ImportError))
+                        or attempt == 2
+                    ):
+                        self.emit(
+                            ConversationEvent(
+                                kind="error", detail="Conversation failed; see setup docs"
+                            )
+                        )
                         return
-                    await asyncio.sleep(0.1)
+                    if getattr(exc, "status_code", None) in (401, 403, 429):
+                        self.emit(
+                            ConversationEvent(kind="error", detail="Authentication or rate limit")
+                        )
+                        return
+                    for _ in range(10 * 2**attempt):
+                        if self.stop_event.is_set():
+                            return
+                        await asyncio.sleep(0.1)
+        finally:
+            if snapshot is not None:
+                snapshot.take()
 
     def _mock(self):
         self.emit(ConversationEvent(kind="connected"))

@@ -59,9 +59,10 @@ These changes are tested with simulated jitter, conservation of PCM sample order
 short-tail drainage, interruption cancellation, mic suppression/tail/reopening, and
 batching. Real macOS acoustic performance needs confirmation on the user's Mac.
 
-## Optional GPT scene context
+## Optional visual context through ElevenLabs
 
-See [scene-context.md](scene-context.md). A separate OpenAI API key analyzes one webcam
-snapshot per interaction. The resulting description is passed as visual_context and a
-contextual update. The agent's fixed first greeting is preserved; subsequent generated
-responses can reference the observation with appropriate agent prompt guidance.
+See [scene-context.md](scene-context.md). Enable VISION_CONTEXT_ENABLED=true and your
+agent's file input; select an image-capable backend LLM. The existing ElevenLabs API
+key uploads one JPEG per interaction to the active conversation, then sends an official
+multimodal message at a speech pause. No additional OpenAI key is needed. The fixed
+first greeting is preserved; visual input can influence subsequent generated responses.

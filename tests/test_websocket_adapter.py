@@ -8,7 +8,7 @@ from malachi.conversation.audio_output import PlaybackBuffer
 from malachi.conversation.elevenlabs_client import ElevenLabsClient
 
 
-def run_adapter(monkeypatch, settings, messages, scene=""):
+def run_adapter(monkeypatch, settings, messages):
     import elevenlabs.client
     import websockets.asyncio.client
 
@@ -46,7 +46,6 @@ def run_adapter(monkeypatch, settings, messages, scene=""):
     settings.elevenlabs_api_key = "test-only-not-a-real-key"
     buffer = PlaybackBuffer(settings)
     client = ElevenLabsClient(settings, buffer, audio, events.append)
-    client.scene_context = scene
     asyncio.run(client.run(stop))
     return buffer, events, sent
 
@@ -55,6 +54,7 @@ def metadata(format="pcm_16000"):
     return {
         "type": "conversation_initiation_metadata",
         "conversation_initiation_metadata_event": {
+            "conversation_id": "conv_test",
             "agent_output_audio_format": format,
             "user_input_audio_format": "pcm_16000",
         },
@@ -93,7 +93,7 @@ def test_documented_metadata_audio_interruption_ping_goodbye(monkeypatch, settin
     assert any(e.kind == "goodbye" for e in events)
     assert {"type": "pong", "event_id": 7} in sent
     assert sent[0]["type"] == "conversation_initiation_client_data"
-    assert "No visual context" in sent[0]["dynamic_variables"]["visual_context"]
+    assert "no visual context" in sent[0]["dynamic_variables"]["visual_context"]
     assert all("Goodbye" not in e.detail for e in events)
 
 
@@ -117,12 +117,70 @@ def test_goodbye_is_not_substring_match(monkeypatch, settings):
     assert not any(e.kind == "goodbye" for e in events)
 
 
-def test_scene_description_uses_context_update_not_user_message(monkeypatch, settings):
-    scene = "A visitor in a red hoodie beside a bookshelf."
-    _, events, sent = run_adapter(monkeypatch, settings, [metadata()], scene=scene)
-    assert sent[0]["dynamic_variables"] == {"visual_context": scene}
-    updates = [p for p in sent if p.get("type") == "contextual_update"]
-    assert len(updates) == 1 and scene in updates[0]["text"]
-    assert "untrusted visual data" in updates[0]["text"]
-    assert not any(p.get("type") == "user_message" for p in sent)
+def test_audio_and_ping_continue_during_native_image_upload(monkeypatch, settings):
+    import elevenlabs.client
+    import websockets.asyncio.client
+    from malachi.vision.scene_context import PreparedSnapshot
+
+    settings.audio_playback_buffer_ms = 0
+    settings.elevenlabs_agent_id = "test-agent"
+    settings.elevenlabs_api_key = "test-key"
+    stop = threading.Event()
+    sent, events = [], []
+    playback = PlaybackBuffer(settings)
+    duplex = SimpleNamespace(start=lambda send: None, agent_speaking=False, user_speaking=False)
+
+    class Uploader:
+        calls = 0
+
+        def __init__(self):
+            self.release = asyncio.Event()
+
+        async def upload(self, conversation_id, jpeg):
+            self.calls += 1
+            assert conversation_id == "conv_test" and jpeg == b"jpeg"
+            await self.release.wait()
+            return "file_test"
+
+    class Socket:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            pass
+
+        async def send(self, data):
+            packet = json.loads(data)
+            sent.append(packet)
+            if packet.get("type") == "pong":
+                assert uploader.calls == 1  # Upload pending, receive loop still live.
+                assert playback.samples == 320
+                playback.render(320)
+                client.last_audio_received = asyncio.get_running_loop().time() - 1
+                uploader.release.set()
+            if packet.get("type") == "multimodal_message":
+                stop.set()
+
+        async def recv(self):
+            await asyncio.sleep(0.01)
+            return json.dumps(messages.pop(0) if messages else {"type": "unknown"})
+
+    uploader = Uploader()
+    fake = SimpleNamespace(
+        conversational_ai=SimpleNamespace(
+            conversations=SimpleNamespace(
+                get_signed_url=lambda **kw: SimpleNamespace(signed_url="wss://example.invalid/mock")
+            )
+        )
+    )
+    monkeypatch.setattr(elevenlabs.client, "ElevenLabs", lambda **kw: fake)
+    monkeypatch.setattr(websockets.asyncio.client, "connect", lambda *a, **kw: Socket())
+    client = ElevenLabsClient(settings, playback, duplex, events.append, uploader)
+    snapshot = PreparedSnapshot(b"jpeg")
+    client.snapshot = snapshot
+    messages = [metadata(), audio(1), {"type": "ping", "ping_event": {"event_id": 9}}]
+    asyncio.run(asyncio.wait_for(client.run(stop), 2))
+    assert uploader.calls == 1 and snapshot.jpeg is None
+    assert any(p.get("type") == "multimodal_message" for p in sent)
+    assert any(e.kind == "connected" for e in events)
     assert any(e.kind == "scene" and "sent" in e.detail for e in events)

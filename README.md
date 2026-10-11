@@ -79,32 +79,29 @@ interrupt by voice. This is half-duplex suppression, not acoustic echo cancellat
 The prototype uses local RMS activity detection. End Session closes the connection; Emergency Stop latches motion and
 disables autonomous activation until you explicitly Resume and re-enable it.
 
-## Give the ghost visual context with GPT
+## Give the ghost visual context through ElevenLabs
 
-Install the optional vision extra and set these in your local `.env`:
-
-```sh
-python -m pip install -e '.[conversation,vision,dev]'
-```
+Use your existing ElevenLabs credentials—no separate GPT/OpenAI API key:
 
 ```dotenv
 VISION_CONTEXT_ENABLED=true
-OPENAI_API_KEY=your_separate_openai_api_key
-OPENAI_VISION_MODEL=gpt-4.1-mini
 ```
 
-At the start of each real session, one fresh webcam frame is sent to GPT. Its short
-scene description is passed to your existing ghost agent. No image is saved locally;
-this uploads the frame to OpenAI. Analysis is optional, timeout-bounded and disabled
-in demo/vision-only modes. Missing credentials or analysis failure leave voice working.
-The dashboard displays analysis and delivery status, without showing keys or image data.
-See [GPT scene context](docs/scene-context.md) for OpenAI setup, privacy behavior and
-optional `{{visual_context}}` guidance for your ElevenLabs agent prompt.
+Enable **file input / image uploads** on your ElevenLabs agent and choose an
+image-capable backend LLM through ElevenLabs. At interaction start, MALACHI captures
+one fresh webcam frame, connects voice, uploads the frame to that conversation and
+sends it as a multimodal message at a speech pause. Your ghost's backend model uses
+the attached image as context. The fixed first greeting is preserved.
+
+The photo is uploaded to ElevenLabs but not saved locally. Demo and vision-only modes
+never upload. Upload is timeout-bounded and optional; camera tracking, audio and
+WebSocket receive stay responsive. See [ElevenLabs visual context](docs/scene-context.md)
+for agent configuration, delivery behavior and service-side retention/usage details.
 
 ## Test
 
 ```sh
-python -m pip install -e '.[conversation,vision,dev]'
+python -m pip install -e '.[conversation,dev]'
 QT_QPA_PLATFORM=offscreen python -m pytest -q
 python -m ruff check src tests scripts
 python -m ruff format --check src tests scripts

@@ -85,3 +85,24 @@ provider-error fallback, no mock/demo uploads, and documented context handoff. E
 audio/motion/absence tests still pass. Constrained install and cloud setup script pass.
 No live GPT request was made: OPENAI_API_KEY is absent in this environment. Real photo
 accuracy and the ghost's response to visual context need validation on the user's Mac.
+
+## ElevenLabs-only visual input (supersedes the GPT route above)
+
+Removed the direct OpenAI analyzer, key/model settings and dependency requirement.
+The existing ElevenLabs key now authenticates image upload to the active conversation.
+The official SDK's multimodal message references the returned file ID at a speech pause;
+the agent's selected image-capable LLM handles interpretation through ElevenLabs.
+
+Current validation: **83 tests passed**, 0 failed/skipped; two upstream SDK deprecation
+warnings. Lint, formatting, dependency refresh and cloud setup/demo smoke pass. Tests
+exercise actual ElevenLabs SDK multipart upload/authentication with mocked HTTP,
+no upload retry, official multimodal serialization, upload timeout/cancellation,
+no offline upload, single-use snapshot release, speech-pause coordination and concurrent
+audio/ping during upload. The prior OpenAI tests were replaced by this route's tests.
+
+No live ElevenLabs image upload was made: credentials and a real camera are absent
+in the cloud. File input and a compatible multimodal agent/model must be enabled in
+the user's ElevenLabs account. API send success is not proof of model interpretation.
+The image is uploaded remotely as a conversation file; no local image is persisted.
+A multimodal input can generate a conversational response and its turn ordering is
+best-effort. See docs/scene-context.md for limits, retention and setup.
