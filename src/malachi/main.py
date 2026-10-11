@@ -20,9 +20,11 @@ def main():
     settings = Settings()
     if args.demo:
         settings.conversation_backend = "mock"
+        settings.vision_context_enabled = False
         settings.motion_backend = "simulation"
     if args.vision_only:
         settings.conversation_backend = "disabled"
+        settings.vision_context_enabled = False
     configure_logging(settings.debug_mode)
     from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QApplication

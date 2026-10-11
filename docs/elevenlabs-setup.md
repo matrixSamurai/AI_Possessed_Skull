@@ -58,3 +58,10 @@ utterance boundaries; it is not a definitive network-loss measurement.
 These changes are tested with simulated jitter, conservation of PCM sample order,
 short-tail drainage, interruption cancellation, mic suppression/tail/reopening, and
 batching. Real macOS acoustic performance needs confirmation on the user's Mac.
+
+## Optional GPT scene context
+
+See [scene-context.md](scene-context.md). A separate OpenAI API key analyzes one webcam
+snapshot per interaction. The resulting description is passed as visual_context and a
+contextual update. The agent's fixed first greeting is preserved; subsequent generated
+responses can reference the observation with appropriate agent prompt guidance.

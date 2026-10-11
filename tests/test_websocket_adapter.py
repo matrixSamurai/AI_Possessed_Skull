@@ -8,7 +8,7 @@ from malachi.conversation.audio_output import PlaybackBuffer
 from malachi.conversation.elevenlabs_client import ElevenLabsClient
 
 
-def run_adapter(monkeypatch, settings, messages):
+def run_adapter(monkeypatch, settings, messages, scene=""):
     import elevenlabs.client
     import websockets.asyncio.client
 
@@ -46,6 +46,7 @@ def run_adapter(monkeypatch, settings, messages):
     settings.elevenlabs_api_key = "test-only-not-a-real-key"
     buffer = PlaybackBuffer(settings)
     client = ElevenLabsClient(settings, buffer, audio, events.append)
+    client.scene_context = scene
     asyncio.run(client.run(stop))
     return buffer, events, sent
 
@@ -91,7 +92,8 @@ def test_documented_metadata_audio_interruption_ping_goodbye(monkeypatch, settin
     assert [e.kind for e in events].count("connected") == 1
     assert any(e.kind == "goodbye" for e in events)
     assert {"type": "pong", "event_id": 7} in sent
-    assert sent[0] == {"type": "conversation_initiation_client_data"}
+    assert sent[0]["type"] == "conversation_initiation_client_data"
+    assert "No visual context" in sent[0]["dynamic_variables"]["visual_context"]
     assert all("Goodbye" not in e.detail for e in events)
 
 
@@ -113,3 +115,14 @@ def test_goodbye_is_not_substring_match(monkeypatch, settings):
         ],
     )
     assert not any(e.kind == "goodbye" for e in events)
+
+
+def test_scene_description_uses_context_update_not_user_message(monkeypatch, settings):
+    scene = "A visitor in a red hoodie beside a bookshelf."
+    _, events, sent = run_adapter(monkeypatch, settings, [metadata()], scene=scene)
+    assert sent[0]["dynamic_variables"] == {"visual_context": scene}
+    updates = [p for p in sent if p.get("type") == "contextual_update"]
+    assert len(updates) == 1 and scene in updates[0]["text"]
+    assert "untrusted visual data" in updates[0]["text"]
+    assert not any(p.get("type") == "user_message" for p in sent)
+    assert any(e.kind == "scene" and "sent" in e.detail for e in events)

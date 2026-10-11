@@ -46,6 +46,19 @@ class CameraService:
                 self.error,
             )
 
+    def interaction_snapshot(self):
+        """Fresh, unannotated full frame; never upload stale/stopped/demo capture."""
+        with self.lock:
+            if (
+                self.demo
+                or self.stop_event.is_set()
+                or self.error
+                or self.frame is None
+                or time.monotonic() - self.updated > 0.5
+            ):
+                return None
+            return self.frame.copy()
+
     def _run(self):
         detector = cap = None
         try:

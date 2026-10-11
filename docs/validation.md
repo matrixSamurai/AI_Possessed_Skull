@@ -69,3 +69,19 @@ Regression result: **66 tests passed**. Tests cover track-ID changes and extreme
 within one session, late reacquisition, repeated nonaccumulating detection losses,
 20-second default/30-second custom absence limits, and retained 10-second override
 behavior. Lint and formatting checks pass. Real Mac movement testing is still needed.
+
+## GPT visual context
+
+Added opt-in one-snapshot OpenAI analysis at interaction start. Official OpenAI SDK
+3.29.0 Responses requests are verified using a mocked HTTP transport. The description
+is supplied through ElevenLabs visual_context dynamic variables and a contextual_update;
+a fallback dynamic variable keeps the agent usable when analysis fails or is disabled.
+No images/descriptions are written to local disk/logs. API response storage is disabled
+with store=False; provider retention is governed separately by account/service policies.
+
+Regression result: **79 tests passed**, including actual SDK serialization, JPEG resize,
+no repeat analysis across voice retries, timeout/cancellation, missing key/frame and
+provider-error fallback, no mock/demo uploads, and documented context handoff. Existing
+audio/motion/absence tests still pass. Constrained install and cloud setup script pass.
+No live GPT request was made: OPENAI_API_KEY is absent in this environment. Real photo
+accuracy and the ghost's response to visual context need validation on the user's Mac.

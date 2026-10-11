@@ -11,7 +11,7 @@ from malachi.conversation.audio_input import AudioDuplex
 class ConversationManager:
     """One worker per authorization. Bounded retries only before connection succeeds."""
 
-    def __init__(self, settings, client_factory=None):
+    def __init__(self, settings, client_factory=None, scene_factory=None):
         self.settings = settings
         self.events = queue.Queue(maxsize=512)
         self.jaws = queue.Queue(maxsize=256)
@@ -26,6 +26,9 @@ class ConversationManager:
         self.connected_at = None
         self.last_started = self.last_ended = None
         self.factory = client_factory
+        self.scene_factory = scene_factory
+        self.scene_status = "Disabled"
+        self.pending_frame = None
         self.mock_reply = threading.Event()
 
     def emit(self, event):
@@ -42,37 +45,109 @@ class ConversationManager:
         except queue.Full:
             self.stop_event.set()
 
-    def start(self):
+    def start(self, frame=None):
         if self.thread and self.thread.is_alive():
             return False
         self.stop_event.clear()
         self.ever_connected = False
         self.mock_reply.clear()
+        if (
+            self.settings.conversation_backend != "elevenlabs"
+            or not self.settings.vision_context_enabled
+        ):
+            frame = None
+        self.pending_frame = frame
         self.thread = threading.Thread(target=self._worker, daemon=True, name="conversation")
         self.thread.start()
         return True
 
     def _worker(self):
+        frame, self.pending_frame = self.pending_frame, None
         try:
             if self.settings.conversation_backend == "mock":
                 self._mock()
             elif self.settings.conversation_backend == "elevenlabs":
-                asyncio.run(self._live())
+                coroutine = self._live(frame)
+                frame = None
+                asyncio.run(coroutine)
         finally:
             self.audio.stop()
             self.emit(ConversationEvent(kind="closed"))
 
-    async def _live(self):
+    async def _prepare_scene(self, frame):
+        if self.stop_event.is_set():
+            return ""
+        if not self.settings.vision_context_enabled:
+            self.emit(ConversationEvent(kind="scene", detail="Disabled"))
+            return ""
+        if not self.settings.openai_api_key.get_secret_value():
+            self.emit(ConversationEvent(kind="scene", detail="Skipped: set local OPENAI_API_KEY"))
+            return ""
+        if frame is None:
+            self.emit(ConversationEvent(kind="scene", detail="Skipped: no fresh camera snapshot"))
+            return ""
+        from malachi.vision.scene_context import SceneAnalyzer
+
+        self.emit(
+            ConversationEvent(kind="scene", detail="Uploading one snapshot to GPT for analysis")
+        )
+        task = None
+        try:
+            analyzer = (self.scene_factory or SceneAnalyzer)(self.settings)
+            task = asyncio.create_task(analyzer.analyze(frame))
+            frame = None
+            loop = asyncio.get_running_loop()
+            deadline = loop.time() + self.settings.vision_context_timeout_seconds
+            while not task.done():
+                if self.stop_event.is_set():
+                    return ""
+                remaining = deadline - loop.time()
+                if remaining <= 0:
+                    self.emit(
+                        ConversationEvent(
+                            kind="scene", detail="Timed out; conversation continues without scene"
+                        )
+                    )
+                    return ""
+                await asyncio.wait({task}, timeout=min(0.05, remaining))
+            if self.stop_event.is_set():
+                return ""
+            text = task.result().strip()[:1200]
+            if not text:
+                raise ValueError("Empty description")
+            self.emit(
+                ConversationEvent(kind="scene", detail="Analysis ready; preparing agent context")
+            )
+            return text
+        except Exception as exc:
+            # Never log an image, description, key, or provider exception body.
+            self.emit(
+                ConversationEvent(
+                    kind="scene",
+                    detail=f"Analysis skipped ({type(exc).__name__}); conversation continues",
+                )
+            )
+            return ""
+        finally:
+            if task is not None:
+                if not task.done():
+                    task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+
+    async def _live(self, frame=None):
         from malachi.conversation.elevenlabs_client import ElevenLabsClient
 
+        scene = await self._prepare_scene(frame)
+        frame = None
         factory = self.factory or ElevenLabsClient
         for attempt in range(3):
             if self.stop_event.is_set():
                 return
             try:
-                await factory(self.settings, self.playback, self.audio, self.emit).run(
-                    self.stop_event
-                )
+                client = factory(self.settings, self.playback, self.audio, self.emit)
+                if scene:
+                    client.scene_context = scene
+                await client.run(self.stop_event)
                 return
             except Exception as exc:
                 self.failures += 1
@@ -130,6 +205,8 @@ class ConversationManager:
         self.emit(ConversationEvent(kind="activity"))
 
     def mark(self, event, now):
+        if event.kind == "scene":
+            self.scene_status = event.detail
         if event.kind == "connected" and not self.connected:
             self.connected, self.connected_at = True, now
             self.last_started = now

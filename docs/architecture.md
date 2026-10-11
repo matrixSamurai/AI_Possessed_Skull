@@ -3,6 +3,9 @@
 ```mermaid
 flowchart LR
     Camera --> Capture[Camera worker]
+    Capture --> Snapshot[One fresh snapshot at interaction start]
+    Snapshot --> GPT[Optional GPT scene description]
+    GPT --> Manager
     Capture --> Landmarker[Face Landmarker + solvePnP]
     Landmarker --> Tracks[Geometric face tracks]
     Tracks --> Behavior[Qt thread: deterministic behavior]
@@ -63,3 +66,10 @@ headroom, while jaw timestamps still follow DAC timing.
 Speaker echo guard defaults on. It sends silence during pending/playback audio and
 300 ms after its scheduled audible end; this is half-duplex suppression, not AEC.
 Headphones plus guard disabled restore full-duplex user interruption.
+
+Optional scene context runs in the conversation worker before voice connection retries.
+A fresh camera snapshot is copied on activation; encoding and the OpenAI request happen
+outside the UI thread. The application does not request image analysis in mock/demo or
+vision-only workflows. Cancellation closes the async OpenAI request, then no voice
+connection starts. Descriptions are passed once through dynamic variables and a
+non-interrupting contextual update; images and descriptions are not persisted locally.

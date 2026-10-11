@@ -12,6 +12,7 @@ dependencies = [
 ]
 [project.optional-dependencies]
 conversation = ["elevenlabs==2.71.0"]
+vision = ["openai==3.29.0"]
 dev = ["pytest==8.3.5", "pytest-qt==4.4.0", "ruff==0.11.2"]
 [project.scripts]
 malachi = "malachi.main:main"

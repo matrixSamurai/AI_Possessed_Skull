@@ -66,6 +66,8 @@ def test_network_retries_are_bounded_and_cancellable(settings):
     manager = ConversationManager(settings, Failed)
     manager.start()
     event = manager.events.get(timeout=2)
+    assert event.kind == "scene" and event.detail == "Disabled"
+    event = manager.events.get(timeout=2)
     assert event.kind == "summary"
     manager.shutdown()
     assert not manager.thread.is_alive() and Failed.attempts == 1

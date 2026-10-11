@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     cooldown_rearm_absence_seconds: float = Field(5, gt=0)
     elevenlabs_agent_id: str = ""
     elevenlabs_api_key: SecretStr = SecretStr("")
+    vision_context_enabled: bool = False
+    openai_api_key: SecretStr = SecretStr("")
+    openai_vision_model: str = Field("gpt-4.1-mini", min_length=1, max_length=100)
+    vision_context_timeout_seconds: float = Field(5, gt=0, le=10)
+    vision_context_max_image_side: int = Field(640, ge=256, le=1280)
     serial_port: str = ""
     serial_baudrate: int = Field(115200, gt=0)
     debug_mode: bool = False

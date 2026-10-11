@@ -3,7 +3,7 @@
 Run from the repository root, Python 3.11/3.12:
 
 ```sh
-python -m pip install -e '.[conversation,dev]'
+python -m pip install -e '.[conversation,vision,dev]'
 QT_QPA_PLATFORM=offscreen python -m pytest -q
 python -m ruff check src tests scripts
 python -m ruff format --check src tests scripts
@@ -36,3 +36,8 @@ macOS or Raspberry Pi device validation. Required live checks on your Mac:
 Known limitations are documented in README and state-machine/hardware notes rather
 than hidden behind passing mocks. The model download is blocked in the current cloud
 runtime until its network settings are applied.
+
+GPT scene-context tests use the official OpenAI SDK against a mocked HTTP transport,
+not real OpenAI credentials. They verify image resizing, payload/store settings,
+per-session call bounds, timeout/cancellation, failure fallback, no demo upload, and
+documented ElevenLabs context handoff. See docs/scene-context.md for a live Mac check.

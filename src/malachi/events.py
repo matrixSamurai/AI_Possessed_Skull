@@ -25,5 +25,6 @@ class ConversationEvent(BaseModel):
         "agent_end",
         "goodbye",
         "summary",
+        "scene",
     ]
     detail: str = ""

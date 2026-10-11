@@ -73,6 +73,9 @@ class Dashboard(QMainWindow):
         layout.addWidget(title)
         self.streaming = QLabel("OFFLINE • Local perception only")
         layout.addWidget(self.streaming)
+        self.scene_label = QLabel("GPT scene context: disabled (no image upload)")
+        self.scene_label.setWordWrap(True)
+        layout.addWidget(self.scene_label)
         panels = QHBoxLayout()
         layout.addLayout(panels, stretch=3)
         camera_group = QGroupBox("PERCEPTION / click a face to select")
@@ -235,13 +238,18 @@ class Dashboard(QMainWindow):
                 break
             self.manager.mark(event, now)
             self.machine.event(event, now)
-            if event.kind in ("summary", "error", "closed", "connected"):
+            if event.kind in ("summary", "error", "closed", "connected", "scene"):
                 self.log.appendPlainText(f"{event.kind}: {event.detail}")
         self.machine.tick(self.face, now)
         state = self.machine.state
         if state == State.AWAKENING:
             if not self.manager.thread or not self.manager.thread.is_alive():
-                self.manager.start()
+                frame = (
+                    self.camera.interaction_snapshot()
+                    if self.settings.vision_context_enabled
+                    else None
+                )
+                self.manager.start(frame)
         if state == State.ENDING:
             self.manager.end()
             self.motion.neutral_position()
@@ -318,6 +326,7 @@ class Dashboard(QMainWindow):
             f"Audio buffer {audio_stats['buffer_ms']:.0f}ms  •  Device underruns {self.manager.audio.output_underruns}"
             f"  •  Interruptions {audio_stats['interruptions']}"
         )
+        self.scene_label.setText("GPT scene context: " + self.manager.scene_status)
         remote = self.settings.conversation_backend == "elevenlabs" and self.manager.audio.active
         self.streaming.setText(
             "● REMOTE AUDIO STREAM ACTIVE • ElevenLabs"
