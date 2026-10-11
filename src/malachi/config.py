@@ -43,5 +43,15 @@ class Settings(BaseSettings):
     audio_playback_max_wait_ms: int = Field(250, ge=20, le=1000)
     audio_input_chunk_ms: int = Field(100, ge=20, le=250)
     audio_suppress_mic_during_playback: bool = True
+    ambience_enabled: bool = False
+    ambience_directory: Path = Path("assets/ambience")
+    ambience_duration_seconds: float = Field(25, ge=20, le=30)
+    ambience_volume: float = Field(0.15, ge=0, le=0.5)
+    ambience_during_conversation: bool = False
+    ambience_trigger_hold_seconds: float = Field(0.3, gt=0, le=3)
+    ambience_rearm_seconds: float = Field(3, gt=0, le=30)
+    ambience_cooldown_seconds: float = Field(10, ge=0, le=120)
+    motion_pixel_threshold: int = Field(25, ge=5, le=100)
+    motion_area_threshold: float = Field(0.015, gt=0, le=0.3)
     jaw_noise_gate: float = Field(0.015, ge=0, le=1)
     jaw_gain: float = Field(5, gt=0)

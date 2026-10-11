@@ -20,6 +20,7 @@ def main():
     settings = Settings()
     if args.demo:
         settings.conversation_backend = "mock"
+        settings.ambience_enabled = False
         settings.vision_context_enabled = False
         settings.motion_backend = "simulation"
     if args.vision_only:

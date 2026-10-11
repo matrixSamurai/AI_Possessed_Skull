@@ -76,6 +76,9 @@ class Dashboard(QMainWindow):
         self.scene_label = QLabel("ElevenLabs visual context: disabled (no image upload)")
         self.scene_label.setWordWrap(True)
         layout.addWidget(self.scene_label)
+        self.ambience_label = QLabel("Background voices: disabled")
+        self.ambience_label.setWordWrap(True)
+        layout.addWidget(self.ambience_label)
         panels = QHBoxLayout()
         layout.addLayout(panels, stretch=3)
         camera_group = QGroupBox("PERCEPTION / click a face to select")
@@ -138,6 +141,10 @@ class Dashboard(QMainWindow):
             ("Mute microphone", False, lambda v: setattr(self.manager.audio, "mic_muted", v)),
             ("Mute speaker", False, lambda v: setattr(self.manager.playback, "muted", v)),
         ]
+        if self.manager.ambience is not None:
+            toggles.append(
+                ("Background voices", True, lambda v: setattr(self.settings, "ambience_enabled", v))
+            )
         toggles.append(
             (
                 "Speaker echo guard (no voice interrupt)",
@@ -211,6 +218,8 @@ class Dashboard(QMainWindow):
         self.machine.stop(time.monotonic())
         self.auto_toggle.setChecked(False)
         self.manager.end()
+        if self.manager.ambience is not None:
+            self.manager.ambience.stop()
         self.motion.emergency_stop()
         self.jaw_pending.clear()
         if self.hardware:
@@ -242,6 +251,18 @@ class Dashboard(QMainWindow):
                 self.log.appendPlainText(f"{event.kind}: {event.detail}")
         self.machine.tick(self.face, now)
         state = self.machine.state
+        if self.manager.ambience is not None:
+            moving, _ = self.camera.motion_snapshot()
+            self.manager.ambience.engine.update(
+                self.face is not None,
+                moving,
+                state in (State.AWAKENING, State.CONVERSING, State.ENDING),
+                self.manager.audio.suppress_mic_during_playback,
+                self.machine.emergency,
+                self.manager.playback.muted,
+                now,
+            )
+            self.ambience_label.setText("Background voices: " + self.manager.ambience.engine.status)
         if state == State.AWAKENING:
             if not self.manager.thread or not self.manager.thread.is_alive():
                 frame = (

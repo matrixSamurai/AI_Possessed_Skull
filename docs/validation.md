@@ -130,3 +130,22 @@ Added bounded/redacted extraction of the API's error message instead of dumping 
 response. Redaction, omitted HTML/input-validation data and opaque-body behavior have
 unit tests. **89 tests passed**, lint/format/diff checks pass. Actual image upload and
 interpretation remain unresolved pending the new error reason from the user's Mac.
+
+## Background voice playback
+
+Added opt-in cached WAV ambience, face/sustained-motion triggering, a fixed configurable
+20–30 second window (default 25), shuffled clips/gaps, fades/ducking, absence rearming
+and cooldown. Background audio has independent volume and never drives the agent jaw.
+Speaker-mode conversations pause ambience; headphone mode can mix it into the existing
+output. Idle/voice device ownership is exclusive and the handover retains an acoustic
+mic-guard tail. Emergency stop, mute and shutdown cover background output too.
+
+An explicit ElevenLabs TTS generation CLI caches up to 16 short voice/phrase clips
+using the existing local key. Playback itself performs no network calls. Generated
+clips remain ignored locally; no actual clips were generated in the cloud.
+
+Current regression result: **101 tests passed**, lint/format checks pass, offscreen demo
+startup/shutdown passes. Mocked real SDK TTS serialization/cache reuse and mocked output
+handover are tested, alongside motion, timers, shuffle, conversation pause/mix, ducking,
+agent-jaw independence and acoustic tail handling. Voice IDs/phrases and real Mac audio
+validation remain outstanding. The separate HTTP 400 image-upload issue is unresolved.

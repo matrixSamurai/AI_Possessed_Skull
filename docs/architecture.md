@@ -76,3 +76,10 @@ releases bytes when consumed. A documented multimodal message references the upl
 file at a speech pause; the ElevenLabs agent's image-capable backend LLM interprets it.
 No separate OpenAI request, key or SDK is used. See docs/scene-context.md for the
 service-side requirements and retention/turn-order caveats.
+
+Background voices: a frame-difference motion worker signal and selected-face presence
+feed a deterministic bounded ambience scheduler. WAV loading/idle playback happen on
+a worker; detection never calls TTS. Idle output transfers exclusive device ownership
+to AudioDuplex during conversation; its callback mixes ambience after computing the
+agent-only jaw envelope. Speaker echo guard pauses concurrent background playback;
+headphone mode can mix/duck it. TTS generation is an explicit setup CLI with cached WAVs.

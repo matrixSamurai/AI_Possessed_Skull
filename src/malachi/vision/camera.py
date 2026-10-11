@@ -17,6 +17,8 @@ class CameraService:
         self.faces = []
         self.error = "camera stopped"
         self.updated = 0.0
+        self.moving = False
+        self.motion_score = 0.0
         self.stop_event = threading.Event()
         self.thread = None
 
@@ -35,6 +37,7 @@ class CameraService:
             self.face = None
             self.faces = []
             self.error = "camera stopped"
+            self.moving = False
 
     def snapshot(self):
         with self.lock:
@@ -45,6 +48,11 @@ class CameraService:
                 [] if stale else list(self.faces),
                 self.error,
             )
+
+    def motion_snapshot(self):
+        with self.lock:
+            fresh = not self.error and time.monotonic() - self.updated <= 0.5
+            return (self.moving and fresh, self.motion_score if fresh else 0.0)
 
     def interaction_snapshot(self):
         """Fresh, unannotated full frame; never upload stale/stopped/demo capture."""
@@ -61,6 +69,9 @@ class CameraService:
 
     def _run(self):
         detector = cap = None
+        from malachi.vision.motion_detector import MotionDetector
+
+        movement = MotionDetector(self.settings)
         try:
             if not self.demo:
                 from malachi.vision.face_detector import FaceDetector
@@ -110,13 +121,16 @@ class CameraService:
                                 [],
                                 "Camera unavailable; retrying",
                             )
+                        movement.reset()
                         self.stop_event.wait(1)
                         continue
                     faces = detector.detect(frame, started)
+                moving = movement.update(frame) if not self.demo else False
                 face, faces = self.tracker.select(faces, started)
                 with self.lock:
                     self.frame, self.face, self.faces = frame, face, faces
                     self.error, self.updated = "", started
+                    self.moving, self.motion_score = moving, movement.score
                 self.stop_event.wait(
                     max(0, 1 / self.settings.camera_fps - (time.monotonic() - started))
                 )

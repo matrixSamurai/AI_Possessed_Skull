@@ -29,6 +29,12 @@ class ConversationManager:
         self.scene_status = "Disabled"
         self.pending_frame = None
         self.mock_reply = threading.Event()
+        self.ambience = None
+        if settings.ambience_enabled:
+            from malachi.ambience.service import AmbienceService
+
+            self.ambience = AmbienceService(settings, self.emit)
+            self.audio.ambience = self.ambience
 
     def emit(self, event):
         if event.kind == "connected":
@@ -190,3 +196,5 @@ class ConversationManager:
         self.end()
         if self.thread:
             self.thread.join(timeout=3)
+        if self.ambience is not None:
+            self.ambience.close()

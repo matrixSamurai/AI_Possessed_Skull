@@ -11,6 +11,7 @@ class AudioDuplex:
     def __init__(self, playback, emit, jaw_emit):
         self.playback, self.emit, self.jaw_emit = playback, emit, jaw_emit
         self.mic_muted = False
+        self.ambience = None
         self.active = False
         self.input = self.output_stream = None
         self.queue = queue.Queue(maxsize=50)
@@ -35,6 +36,10 @@ class AudioDuplex:
         while not self.queue.empty():
             self.queue.get_nowait()
         try:
+            if self.ambience is not None:
+                self.speaker_guard_until = max(
+                    self.speaker_guard_until, self.ambience.release_output()
+                )
             self.output_stream = sd.OutputStream(
                 samplerate=16000,
                 channels=1,
@@ -97,6 +102,11 @@ class AudioDuplex:
 
     def _output(self, data, frames, timing, status):
         samples, jaw, generation = self.playback.render(frames)
+        # Only agent PCM drives jaw/speaking telemetry. Background voices are a
+        # separate quiet channel mixed here so only one device output is active.
+        if self.ambience is not None:
+            background = self.ambience.render(frames, self.playback.speaking, self.user_speaking)
+            samples = np.clip(samples + background, -1, 1)
         data[:, 0] = samples
         # Schedule jaw for actual DAC presentation time, including device buffering.
         delay = max(0, timing.outputBufferDacTime - timing.currentTime)
@@ -163,3 +173,5 @@ class AudioDuplex:
         if self.thread and self.thread is not threading.current_thread():
             self.thread.join(timeout=1)
         self.playback.clear()
+        if self.ambience is not None:
+            self.ambience.return_output()

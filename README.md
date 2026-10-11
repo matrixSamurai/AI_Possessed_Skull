@@ -98,6 +98,21 @@ never upload. Upload is timeout-bounded and optional; camera tracking, audio and
 WebSocket receive stay responsive. See [ElevenLabs visual context](docs/scene-context.md)
 for agent configuration, delivery behavior and service-side retention/usage details.
 
+## Scary background voices
+
+Use a bank of local WAV clips, or generate them once with your ElevenLabs voice IDs:
+
+```sh
+python -m malachi.ambience.generate --voice-id YOUR_VOICE_ID --phrase "Who dares enter?"
+```
+
+Set AMBIENCE_ENABLED=true in .env and restart. Faces or sustained scene motion trigger
+25 seconds of shuffled low-volume voices, with rearming/cooldown rather than endless
+retriggering. Background clips do not animate the jaw. Speaker-mode conversations
+pause them; headphone users can opt into mixed, ducked playback during conversations.
+Clip generation uses TTS credits; detection/playback reuse local files without API calls.
+See [background voices](docs/background-voices.md) for settings, formats and setup.
+
 ## Test
 
 ```sh
