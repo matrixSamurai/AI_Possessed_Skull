@@ -75,6 +75,7 @@ def test_emergency_latched(settings, face):
 
 
 def test_manual_start_duplicate_and_camera_absence(settings, face):
+    settings.visitor_absence_timeout_seconds = 10
     m = StateMachine(settings)
     m.start(0)
     m.start(1)
@@ -115,11 +116,60 @@ def test_target_switch_resets_qualification(settings, face):
     assert m.state == State.AWAKENING
 
 
-def test_new_face_does_not_hide_original_visitor_absence(settings, face):
+def test_tracking_id_changes_do_not_disconnect_active_session(settings, face):
     m = StateMachine(settings)
     awaken(m, face)
     m.event(ConversationEvent(kind="connected"), 3.4)
-    other = face.model_copy(update={"track_id": 2})
-    m.tick(other, 4)
-    m.tick(other, 14)
+    entered = m.entered
+    for now, track_id in [(4, 2), (14, 3), (24, 4)]:
+        moving = face.model_copy(update={"track_id": track_id, "yaw": 80, "pitch": 50})
+        m.tick(moving, now)
+        m.event(ConversationEvent(kind="activity"), now)
+        assert m.state == State.CONVERSING
+        assert m.policy.absent_since is None
+        assert m.entered == entered  # Same session, no reconnect/re-awakening.
+    m.tick(None, 25)
+    m.tick(None, 44.999)
+    assert m.state == State.CONVERSING
+    m.tick(None, 45)
+    assert m.state == State.ENDING and m.reason == "visitor absent"
+
+
+def test_return_after_occlusion_resets_entire_absence_countdown(settings, face):
+    m = StateMachine(settings)
+    awaken(m, face)
+    m.event(ConversationEvent(kind="connected"), 3.4)
+    m.event(ConversationEvent(kind="agent_start"), 4)
+    m.tick(None, 5)
+    m.tick(face.model_copy(update={"track_id": 99}), 24)
+    assert m.state == State.CONVERSING and m.policy.absent_since is None
+    m.tick(None, 25)
+    m.tick(None, 44.999)
+    assert m.state == State.CONVERSING
+    m.tick(None, 45)
+    assert m.reason == "visitor absent"
+
+
+def test_repeated_short_tracking_losses_are_not_accumulated(settings, face):
+    m = StateMachine(settings)
+    awaken(m, face)
+    m.event(ConversationEvent(kind="connected"), 3.4)
+    for start in (5, 20, 35, 50):
+        m.event(ConversationEvent(kind="activity"), start)
+        m.tick(None, start)
+        m.tick(None, start + 10)
+        m.tick(face.model_copy(update={"track_id": int(start)}), start + 11)
+        assert m.state == State.CONVERSING and m.policy.absent_since is None
+
+
+def test_custom_absence_timeout_is_respected(settings, face):
+    settings.visitor_absence_timeout_seconds = 30
+    m = StateMachine(settings)
+    m.start(0)
+    m.event(ConversationEvent(kind="connected"), 1)
+    m.event(ConversationEvent(kind="agent_start"), 2)
+    m.tick(None, 2)
+    m.tick(None, 31.999)
+    assert m.state == State.CONVERSING
+    m.tick(None, 32)
     assert m.state == State.ENDING and m.reason == "visitor absent"

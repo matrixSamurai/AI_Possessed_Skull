@@ -125,7 +125,11 @@ Camera enumeration is not automatic: select a camera index. Short-lived geometri
 tracks are not identities. Cooldown conservatively requires the entire detection
 zone to be empty for 5 seconds; a different person entering an occupied zone does
 not bypass cooldown. A new geometric target resets qualification. During an active
-session, the absence timer follows its original geometric target rather than any face.
+session, any selected visible face resets the absence timer even when its geometric
+track ID changes during motion or occlusion. Only continuous empty-zone time counts.
+The default absence grace is 20 seconds; existing `.env` overrides still take precedence.
+Set `VISITOR_ABSENCE_TIMEOUT_SECONDS=20` (or 30) for movement-heavy use. This uses zone
+occupancy rather than personal identity, so another person entering keeps the session alive.
 Track association can be ambiguous during occlusion or when visitors cross paths.
 Head/LED interfaces are prepared but have no physical driver or expressive routines.
 Session telemetry is in memory and resets when the application exits.

@@ -55,3 +55,17 @@ updated offscreen dashboard smoke check passed. Tests cover jitter without sampl
 short tails, immediate interruption, echo suppression/tail/reopening, full duplex
 opt-out, microphone batching and device-underrun reporting. Actual speaker acoustic
 performance remains to be confirmed on the user's Mac; this is suppression, not AEC.
+
+## Movement and tracking-loss grace
+
+Active-session presence now follows visible face occupancy rather than a fixed
+geometric track ID. Rapid movement or occlusion can change IDs without ending the
+connection. The default continuous-absence timeout is 20 seconds, configurable via
+VISITOR_ABSENCE_TIMEOUT_SECONDS; any returning visible face resets the timer.
+Activation pose thresholds, 30-second idle policy, 180-second maximum, manual stop
+and emergency stop remain independent. Existing .env timeout overrides are preserved.
+
+Regression result: **66 tests passed**. Tests cover track-ID changes and extreme pose
+within one session, late reacquisition, repeated nonaccumulating detection losses,
+20-second default/30-second custom absence limits, and retained 10-second override
+behavior. Lint and formatting checks pass. Real Mac movement testing is still needed.

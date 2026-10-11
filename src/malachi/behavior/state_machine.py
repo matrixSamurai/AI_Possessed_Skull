@@ -61,9 +61,11 @@ class StateMachine:
                 self.reset(now)
             return
         if self.state in (State.AWAKENING, State.CONVERSING):
-            if self.session_target_id is None and face is not None:
+            # Track IDs are geometric, not visitor identities: rapid motion/occlusion
+            # can assign a new ID to the same person. Active sessions follow occupancy.
+            if face is not None:
                 self.session_target_id = face.track_id
-            self.policy.update_presence(present and face.track_id == self.session_target_id, now)
+            self.policy.update_presence(present, now)
             reason = self.policy.end_reason(now)
             if self.state == State.AWAKENING and now - self.entered >= 20:
                 reason = "connection timeout"

@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     eye_max_pan_degrees: float = Field(20, gt=0, le=30)
     eye_max_tilt_degrees: float = Field(15, gt=0, le=25)
     conversation_idle_timeout_seconds: float = Field(30, gt=0)
-    visitor_absence_timeout_seconds: float = Field(10, gt=0)
+    visitor_absence_timeout_seconds: float = Field(20, gt=0)
     max_session_duration_seconds: float = Field(180, gt=0)
     cooldown_rearm_absence_seconds: float = Field(5, gt=0)
     elevenlabs_agent_id: str = ""

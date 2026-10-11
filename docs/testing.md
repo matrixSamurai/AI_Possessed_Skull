@@ -29,7 +29,7 @@ macOS or Raspberry Pi device validation. Required live checks on your Mac:
 2. Look away during qualification; confirm reset. Test multiple faces and selection.
 3. Enable the real agent. Verify first greeting, full duplex interaction and interruptions.
 4. Compare jaw motion to audible playback, including pauses; mute speaker and check closure.
-5. Test 30 s idle, 10 s absence, 180 s maximum and cooldown rearming.
+5. Test 30 s idle, configured continuous absence (default 20 s), 180 s maximum and cooldown rearming.
 6. Disconnect network and audio devices; verify responsive vision/UI and clean shutdown.
 7. Grant/revoke macOS permissions to verify useful error reporting.
 

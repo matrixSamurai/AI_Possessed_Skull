@@ -21,8 +21,13 @@ Idle is 30 seconds since meaningful activity: visitor speech start/end, agent au
 agent response, playback speech start/end. It does not expire while either party is
 marked speaking. Microphone RMS is a conservative activity heuristic, not a semantic
 voice detector; background noise and feedback may extend a session. The 180 second
-hard maximum still bounds it. Original-target absence for 10 seconds ends a session,
-even during speech. Camera stopped/unavailable counts as absence.
+hard maximum still bounds it. Continuous absence of any visible face for 20 seconds (configurable via
+VISITOR_ABSENCE_TIMEOUT_SECONDS) ends a session, even during speech. Camera
+stopped/unavailable counts as absence. Returning faces reset the full countdown,
+including when movement/occlusion gives them a different temporary track ID.
+Yaw/pitch and the 3-second facing hold apply only to initial activation, not to
+keeping an already active conversation alive. Another visitor occupying the zone
+also resets the timer; geometric tracks cannot establish personal identity.
 
 Maximum duration, absence, manual stop and shutdown currently cancel queued output
 immediately; graceful final-response draining is not implemented. Whole-utterance

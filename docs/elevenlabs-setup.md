@@ -13,7 +13,7 @@
 6. Launch `malachi`. A face qualifies after the hold or use Start session manually.
    The existing agent sends its greeting; the application does not create or overwrite it.
 7. Verify the remote-stream indicator, real greeting, conversation and jaw timing.
-   Walk away for 10 seconds; check that streaming stops and state becomes COOLDOWN.
+   Leave the zone empty for the configured absence timeout (default 20 seconds); check that streaming stops and state becomes COOLDOWN.
 
 Official references:
 - https://elevenlabs.io/docs/agents-platform/libraries/python

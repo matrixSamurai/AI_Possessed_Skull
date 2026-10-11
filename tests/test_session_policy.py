@@ -23,6 +23,7 @@ def test_activity_and_speaking(settings):
 
 
 def test_absence_recovers(settings):
+    settings.visitor_absence_timeout_seconds = 10
     p = SessionPolicy(settings)
     p.start(0)
     p.update_presence(False, 1)
