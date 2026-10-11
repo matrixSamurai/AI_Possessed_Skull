@@ -118,3 +118,15 @@ show HTTP status, not error body. **86 tests passed**, lint/format/diff checks p
 The user's Client data screenshot contains the compatibility placeholder; it does not
 establish successful file delivery or image-capable model selection. Actual root cause
 remains unconfirmed pending local delivery status and agent configuration output.
+
+## Live upload rejection diagnosis
+
+The user's updated dashboard confirms local photo capture is enabled but the image
+REST upload is rejected with ApiError HTTP 400; voice remains connected. Agent config
+previously reported file input enabled and qwen35-397b-a17b. The specific rejection
+reason remains unknown; neither that model name nor SDK support proves live acceptance.
+
+Added bounded/redacted extraction of the API's error message instead of dumping its
+response. Redaction, omitted HTML/input-validation data and opaque-body behavior have
+unit tests. **89 tests passed**, lint/format/diff checks pass. Actual image upload and
+interpretation remain unresolved pending the new error reason from the user's Mac.

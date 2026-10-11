@@ -147,3 +147,18 @@ compatibility placeholder, not the image or an analysis result. File input arriv
 as a separate multimodal conversation message. 'No client overrides' is expected: MALACHI
 does not override your selected model, prompt or agent configuration. Check attachment
 messages and the local delivery status instead of treating that panel as upload evidence.
+
+## HTTP 400 upload rejection
+
+HTTP 400 means the REST upload was rejected before its photo could be sent to the
+agent. Camera preview and successful voice connection do not establish image support.
+The dashboard now extracts only the API's short error-message field, redacting the
+configured key/agent ID, URLs, bearer/key tokens and long encoded data. It omits raw
+responses, validation lists (which may reflect input bytes), headers and HTML.
+This safe explanation is displayed locally; ordinary status handling still preserves
+voice. Start one new interaction after updating and share the visual-context error line.
+
+A service restriction to text-only conversations, an unsupported model route, a file
+configuration restriction or a malformed request require different corrections. Do
+not treat a model's generic image capability or the presence of file input in agent
+settings as proof that the active voice conversation accepts files.

@@ -85,10 +85,14 @@ class ElevenLabsClient:
         except Exception as exc:
             status = getattr(exc, "status_code", None)
             status_hint = f" HTTP {status}" if status is not None else ""
+            from malachi.conversation.upload_errors import upload_error_hint
+
+            reason = upload_error_hint(exc, self.settings)
+            hint = reason or "check agent file input, model and upload permissions"
             self.emit(
                 ConversationEvent(
                     kind="scene",
-                    detail=f"Image skipped ({type(exc).__name__}{status_hint}); check agent file input, model and upload permissions",
+                    detail=f"Image skipped ({type(exc).__name__}{status_hint}): {hint}",
                 )
             )
         finally:
