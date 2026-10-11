@@ -1,4 +1,4 @@
-"""Download Google's versioned Face Landmarker with TLS and upstream MD5 validation."""
+"""Download Google's versioned Face Landmarker with TLS and upstream checksum validation."""
 
 import base64
 import hashlib
@@ -13,6 +13,19 @@ TARGET = ROOT / "assets/face_landmarker.task"
 MANIFEST = TARGET.with_suffix(".task.sha256")
 
 
+def crc32c(data: bytes) -> bytes:
+    """Google Storage CRC32C (Castagnoli), encoded as four big-endian bytes."""
+    table = []
+    for value in range(256):
+        for _ in range(8):
+            value = (value >> 1) ^ (0x82F63B78 if value & 1 else 0)
+        table.append(value)
+    value = 0xFFFFFFFF
+    for byte in data:
+        value = table[(value ^ byte) & 0xFF] ^ (value >> 8)
+    return (value ^ 0xFFFFFFFF).to_bytes(4, "big")
+
+
 def main():
     if TARGET.is_file() and MANIFEST.is_file():
         expected = MANIFEST.read_text().strip()
@@ -21,19 +34,33 @@ def main():
             return
     TARGET.parent.mkdir(parents=True, exist_ok=True)
     with urllib.request.urlopen(URL, timeout=60) as response:
+        # urllib's get() returns only the first occurrence of a repeated header.
+        headers = response.headers
+        values = (
+            headers.get_all("x-goog-hash", [])
+            if hasattr(headers, "get_all")
+            else [headers.get("x-goog-hash", "")]
+        )
         hashes = dict(
             part.strip().split("=", 1)
-            for part in response.headers.get("x-goog-hash", "").split(",")
+            for value in values
+            for part in value.split(",")
             if "=" in part
         )
-        if "md5" not in hashes:
+        available = set(hashes) & {"md5", "crc32c"}
+        if not available:
             raise RuntimeError("Upstream checksum unavailable; model was not installed")
         data = response.read(10_000_001)
         if len(data) > 10_000_000:
             raise RuntimeError("Unexpected model size")
-        expected_md5 = base64.b64decode(hashes["md5"])
-        if hashlib.md5(data, usedforsecurity=False).digest() != expected_md5:
-            raise RuntimeError("Model checksum failed")
+        # Verify every recognized checksum supplied over the trusted TLS connection.
+        for name in available:
+            expected = base64.b64decode(hashes[name], validate=True)
+            actual = (
+                hashlib.md5(data, usedforsecurity=False).digest() if name == "md5" else crc32c(data)
+            )
+            if actual != expected:
+                raise RuntimeError(f"Model checksum failed ({name})")
     with tempfile.NamedTemporaryFile(dir=TARGET.parent, delete=False) as temporary:
         temporary.write(data)
         path = Path(temporary.name)

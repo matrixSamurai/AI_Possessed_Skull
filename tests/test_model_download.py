@@ -43,3 +43,48 @@ def test_checksum_failure_does_not_install(downloader):
         with pytest.raises(RuntimeError, match="checksum"):
             downloader.main()
     assert not downloader.TARGET.exists()
+
+
+def test_repeated_google_checksum_headers(downloader):
+    from email.message import Message
+
+    stream = response()
+    data = stream.getvalue()
+    headers = Message()
+    headers.add_header(
+        "x-goog-hash", "crc32c=" + base64.b64encode(downloader.crc32c(data)).decode()
+    )
+    headers.add_header("x-goog-hash", stream.headers["x-goog-hash"])
+    stream.headers = headers
+    with patch("urllib.request.urlopen", return_value=stream):
+        downloader.main()
+    assert downloader.TARGET.exists()
+
+
+def test_crc32c_known_vector_and_crc_only_response(downloader):
+    assert downloader.crc32c(b"123456789").hex() == "e3069283"
+    stream = response()
+    stream.headers = {
+        "x-goog-hash": "crc32c=" + base64.b64encode(downloader.crc32c(stream.getvalue())).decode()
+    }
+    with patch("urllib.request.urlopen", return_value=stream):
+        downloader.main()
+    assert downloader.TARGET.exists()
+
+
+def test_missing_checksums_still_rejected(downloader):
+    stream = response()
+    stream.headers = {}
+    with patch("urllib.request.urlopen", return_value=stream):
+        with pytest.raises(RuntimeError, match="checksum unavailable"):
+            downloader.main()
+    assert not downloader.TARGET.exists()
+
+
+def test_bad_crc32c_still_rejected(downloader):
+    stream = response()
+    stream.headers = {"x-goog-hash": "crc32c=AAAAAA=="}
+    with patch("urllib.request.urlopen", return_value=stream):
+        with pytest.raises(RuntimeError, match="checksum failed"):
+            downloader.main()
+    assert not downloader.TARGET.exists()

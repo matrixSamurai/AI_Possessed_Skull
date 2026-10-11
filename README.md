@@ -36,7 +36,7 @@ malachi --vision-only
 ```
 
 Model download needs access to `storage.googleapis.com`. It verifies TLS, the
-upstream Google Storage MD5, the task archive CRCs, and a retained local SHA-256.
+upstream Google Storage checksums (MD5/CRC32C), the task archive CRCs, and a retained local SHA-256.
 After installation, vision-only mode works offline. Camera 0 is the default;
 change CAMERA_INDEX in `.env` or Configuration, then Stop / Start camera.
 Select a face by clicking its box; Auto-select face restores largest-face selection.
