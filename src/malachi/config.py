@@ -35,5 +35,9 @@ class Settings(BaseSettings):
     serial_port: str = ""
     serial_baudrate: int = Field(115200, gt=0)
     debug_mode: bool = False
+    audio_playback_buffer_ms: int = Field(120, ge=0, le=500)
+    audio_playback_max_wait_ms: int = Field(250, ge=20, le=1000)
+    audio_input_chunk_ms: int = Field(100, ge=20, le=250)
+    audio_suppress_mic_during_playback: bool = True
     jaw_noise_gate: float = Field(0.015, ge=0, le=1)
     jaw_gain: float = Field(5, gt=0)

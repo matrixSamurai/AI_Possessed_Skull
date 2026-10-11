@@ -104,6 +104,7 @@ class Dashboard(QMainWindow):
         session_group = QGroupBox("SESSION / DURATION, NOT BILLING")
         ss = QVBoxLayout(session_group)
         self.session_label = QLabel()
+        self.session_label.setWordWrap(True)
         ss.addWidget(self.session_label)
         monitor.addWidget(session_group)
         controls = QGroupBox("CONTROL ROOM")
@@ -134,6 +135,13 @@ class Dashboard(QMainWindow):
             ("Mute microphone", False, lambda v: setattr(self.manager.audio, "mic_muted", v)),
             ("Mute speaker", False, lambda v: setattr(self.manager.playback, "muted", v)),
         ]
+        toggles.append(
+            (
+                "Speaker echo guard (no voice interrupt)",
+                self.manager.audio.suppress_mic_during_playback,
+                lambda v: setattr(self.manager.audio, "suppress_mic_during_playback", v),
+            )
+        )
         self.auto_toggle = None
         for i, (label, checked, callback) in enumerate(toggles):
             box = QCheckBox(label)
@@ -302,10 +310,13 @@ class Dashboard(QMainWindow):
         speaker = (
             "VISITOR" if policy.user_speaking else "GHOST" if policy.agent_speaking else "WAITING"
         )
+        audio_stats = self.manager.playback.stats()
         self.session_label.setText(
             f"{speaker}  •  Current {duration:.1f}s  /  Total {total:.1f}s\n"
             f"Sessions {self.manager.sessions}  •  Failures {self.manager.failures}\n"
-            f"Idle {idle:.1f}s  •  Absence {absence:.1f}s"
+            f"Idle {idle:.1f}s  •  Absence {absence:.1f}s\n"
+            f"Audio buffer {audio_stats['buffer_ms']:.0f}ms  •  Device underruns {self.manager.audio.output_underruns}"
+            f"  •  Interruptions {audio_stats['interruptions']}"
         )
         remote = self.settings.conversation_backend == "elevenlabs" and self.manager.audio.active
         self.streaming.setText(

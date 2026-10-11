@@ -13,23 +13,34 @@ class AudioDuplex:
         self.mic_muted = False
         self.active = False
         self.input = self.output_stream = None
-        self.queue = queue.Queue(maxsize=16)
+        self.queue = queue.Queue(maxsize=50)
         self.stop_event = threading.Event()
         self.thread = None
         self.user_speaking = self.agent_speaking = False
         self.last_voice = 0.0
+        self.suppress_mic_during_playback = playback.settings.audio_suppress_mic_during_playback
+        self.speaker_guard_until = 0.0
+        self.output_underruns = 0
+        self.last_output_notice = float("-inf")
+        self.overflow_reported = False
 
     def start(self, send):
         import sounddevice as sd
 
         self.stop_event.clear()
         self.send = send
+        self.user_speaking = self.agent_speaking = False
+        self.last_voice = self.speaker_guard_until = 0.0
+        self.overflow_reported = False
+        while not self.queue.empty():
+            self.queue.get_nowait()
         try:
             self.output_stream = sd.OutputStream(
                 samplerate=16000,
                 channels=1,
                 dtype="float32",
                 blocksize=320,
+                latency="high",
                 callback=self._output,
                 finished_callback=self._finished,
             )
@@ -38,6 +49,7 @@ class AudioDuplex:
                 channels=1,
                 dtype="int16",
                 blocksize=320,
+                latency="high",
                 callback=self._input,
                 finished_callback=self._finished,
             )
@@ -56,10 +68,14 @@ class AudioDuplex:
 
     def _input(self, data, frames, timing, status):
         audio = data.copy()
-        if self.mic_muted:
+        now = time.monotonic()
+        guarded = self.suppress_mic_during_playback and (
+            (self.playback.samples > 0 and not self.playback.muted)
+            or now < self.speaker_guard_until
+        )
+        if self.mic_muted or guarded:
             audio.fill(0)
         rms = float(np.sqrt(np.mean((audio.astype(np.float32) / 32768) ** 2)))
-        now = time.monotonic()
         if rms > 0.025:
             self.last_voice = now
         speaking = rms > 0.025 or (self.user_speaking and now - self.last_voice < 0.4)
@@ -69,7 +85,13 @@ class AudioDuplex:
         try:
             self.queue.put_nowait(audio.astype("<i2").tobytes())
         except queue.Full:
-            self.emit(ConversationEvent(kind="error", detail="microphone send queue overflow"))
+            if not self.overflow_reported:
+                self.overflow_reported = True
+                self.emit(
+                    ConversationEvent(
+                        kind="error", detail="Microphone network backlog exceeded 1 second"
+                    )
+                )
         if status:
             self.emit(ConversationEvent(kind="summary", detail="audio input status"))
 
@@ -78,21 +100,51 @@ class AudioDuplex:
         data[:, 0] = samples
         # Schedule jaw for actual DAC presentation time, including device buffering.
         delay = max(0, timing.outputBufferDacTime - timing.currentTime)
-        self.jaw_emit(jaw, time.monotonic() + delay, generation)
+        now = time.monotonic()
+        self.jaw_emit(jaw, now + delay, generation)
+        if np.any(samples):
+            self.speaker_guard_until = now + delay + frames / 16000 + 0.3
         speaking = self.playback.speaking
         if speaking != self.agent_speaking:
             self.agent_speaking = speaking
             self.emit(ConversationEvent(kind="agent_start" if speaking else "agent_end"))
         if status:
-            self.emit(ConversationEvent(kind="summary", detail="audio output status"))
+            if getattr(status, "output_underflow", False):
+                self.output_underruns += 1
+            if now - self.last_output_notice >= 5:
+                self.last_output_notice = now
+                self.emit(
+                    ConversationEvent(
+                        kind="summary", detail="Audio device underrun/status; check audio load"
+                    )
+                )
 
     def _sender(self):
+        # 100 ms packets reduce WebSocket traffic; PortAudio stays at 20 ms for jaw timing.
+        target_bytes = 32 * self.playback.settings.audio_input_chunk_ms
+        pending = bytearray()
         while not self.stop_event.is_set():
             try:
-                audio = self.queue.get(timeout=0.1)
-                self.send(audio)
+                pending.extend(self.queue.get(timeout=0.1))
+                if len(pending) < target_bytes:
+                    continue
             except queue.Empty:
+                if not pending:
+                    continue
+                try:
+                    if not self.stop_event.is_set():
+                        self.send(bytes(pending))
+                    pending.clear()
+                except Exception:
+                    self.emit(ConversationEvent(kind="error", detail="audio transmission failed"))
+                    return
                 continue
+            if self.stop_event.is_set():
+                return
+            try:
+                while len(pending) >= target_bytes:
+                    self.send(bytes(pending[:target_bytes]))
+                    del pending[:target_bytes]
             except Exception:
                 self.emit(ConversationEvent(kind="error", detail="audio transmission failed"))
                 return

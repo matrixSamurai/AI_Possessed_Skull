@@ -53,3 +53,13 @@ camera capture, disables autonomous activity, clears playback, ends the WebSocke
 stops hardware output. Native camera calls and signed-URL requests have bounded join/
 network timeouts; worker threads are daemonized so unavailable native devices cannot
 hold the desktop process open indefinitely.
+
+Playback resilience: a configurable 120 ms startup/rebuffer threshold absorbs delivery
+jitter; a 250 ms deadline releases smaller tails. Only actual DAC-consumed PCM drives
+the jaw. Microphone packets are coalesced into 100 ms messages rather than one network
+send per 20 ms capture callback. Device latency is configured high for scheduling
+headroom, while jaw timestamps still follow DAC timing.
+
+Speaker echo guard defaults on. It sends silence during pending/playback audio and
+300 ms after its scheduled audible end; this is half-duplex suppression, not AEC.
+Headphones plus guard disabled restore full-duplex user interruption.

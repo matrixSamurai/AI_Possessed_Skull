@@ -41,3 +41,17 @@ is applied, rerun `python scripts/download_model.py` and validate real model inf
 This validation was performed before the initial Git commit and push to the originally
 empty repository. No credentials, raw audio, camera images of real people,
 or transcripts were stored. A new-task snapshot restore has not been tested.
+
+## Speaker feedback fix
+
+After the user reported real Mac camera tracking and live ElevenLabs voice, repeated
+agent words appearing as user input identified speaker feedback. Speaker echo guard
+now defaults on: silence is transmitted during playback and its 300 ms DAC/reverberation
+tail; headphones plus guard disabled retain voice interruption. Added bounded playback
+prebuffering, 100 ms microphone batching, higher device latency and diagnostic counters.
+
+Audio regression validation: **62 tests passed**, lint/format checks passed, and the
+updated offscreen dashboard smoke check passed. Tests cover jitter without sample loss,
+short tails, immediate interruption, echo suppression/tail/reopening, full duplex
+opt-out, microphone batching and device-underrun reporting. Actual speaker acoustic
+performance remains to be confirmed on the user's Mac; this is suppression, not AEC.

@@ -19,6 +19,7 @@ def test_pcm_speech_silence_and_gate():
 
 
 def test_playback_timeline_interruption_and_mute(settings):
+    settings.audio_playback_buffer_ms = 0
     b = PlaybackBuffer(settings)
     b.push((np.ones(640) * 8000).astype("<i2").tobytes())
     assert b.jaw.position == 0  # Enqueue does not animate.
@@ -35,6 +36,7 @@ def test_playback_timeline_interruption_and_mute(settings):
 
 
 def test_pcm_validation_and_bound(settings):
+    settings.audio_playback_buffer_ms = 0
     b = PlaybackBuffer(settings)
     with pytest.raises(ValueError):
         b.push(b"a")

@@ -68,8 +68,14 @@ class ElevenLabsClient:
                     self.emit(ConversationEvent(kind="activity"))
                 elif kind == "interruption":
                     last_interrupt_id = int(message["interruption_event"]["event_id"])
-                    self.playback.clear()
+                    self.playback.clear(interrupted=True)
                     self.emit(ConversationEvent(kind="agent_end"))
+                    self.emit(
+                        ConversationEvent(
+                            kind="summary",
+                            detail="Agent interrupted; if unintended, check speaker echo",
+                        )
+                    )
                 elif kind == "ping":
                     await ws.send(
                         json.dumps({"type": "pong", "event_id": message["ping_event"]["event_id"]})

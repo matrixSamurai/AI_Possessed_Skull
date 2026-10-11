@@ -6,6 +6,7 @@ from malachi.conversation.audio_output import PlaybackBuffer
 
 
 def test_dac_timestamp_jaw_and_speech_events(settings):
+    settings.audio_playback_buffer_ms = 0
     buffer = PlaybackBuffer(settings)
     events, jaws = [], []
     audio = AudioDuplex(buffer, events.append, lambda *a: jaws.append(a))

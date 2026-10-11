@@ -70,9 +70,13 @@ Configure the conversation's input and output audio as **PCM 16 kHz mono**.
 See [ElevenLabs setup](docs/elevenlabs-setup.md) before launching `malachi`.
 The application opens one WebSocket per authorized session; idle monitoring does
 not stream audio. A prominent indicator shows when remote audio streaming is active.
-Use headphones initially to prevent speaker audio from triggering microphone activity.
-The prototype uses local RMS activity detection; it does not implement acoustic echo
-cancellation. End Session closes the connection; Emergency Stop latches motion and
+Speaker echo guard is enabled by default: microphone packets become silence during
+agent playback and for 300 ms after the device-buffer tail. This prevents the MacBook
+speakers from interrupting the agent with its own voice. Wait until the ghost finishes
+before replying. Disable **Speaker echo guard (no voice interrupt)**, or set
+`AUDIO_SUPPRESS_MIC_DURING_PLAYBACK=false`, when using headphones and wanting to
+interrupt by voice. This is half-duplex suppression, not acoustic echo cancellation.
+The prototype uses local RMS activity detection. End Session closes the connection; Emergency Stop latches motion and
 disables autonomous activation until you explicitly Resume and re-enable it.
 
 ## Test
@@ -138,7 +142,14 @@ Session telemetry is in memory and resets when the application exits.
   do not mix system Python, Rosetta, and native arm64 packages.
 - Missing PortAudio on Mac: sounddevice wheels normally include it; try `brew install portaudio`.
   On Linux/Pi use your package manager's `libportaudio2` and development packages.
-- Feedback: use headphones. Noise gates are not a substitute for echo cancellation.
+- Voice stops mid-sentence and visitor transcripts repeat the ghost: enable Speaker
+  echo guard. Leave AUDIO_SUPPRESS_MIC_DURING_PLAYBACK=true for MacBook speakers.
+  Speak after the ghost finishes; use headphones and disable the guard for voice interruption.
+- Choppy audio without interruptions: check Device underruns in the dashboard. Playback
+  prebuffers 120 ms to absorb network jitter and waits at most 250 ms for short tails.
+  AUDIO_PLAYBACK_BUFFER_MS=200 can help noisier connections at the cost of response delay.
+  Microphone traffic is batched into 100 ms packets; output uses a higher device latency
+  for scheduling headroom. Network outages can still interrupt audio.
 - Connection failures: check agent ID, local key, PCM format and account limits. Logs omit
   keys, signed URLs and transcript contents. At most 3 pre-connection attempts use backoff;
   established sessions are never automatically replaced after a disconnect.
