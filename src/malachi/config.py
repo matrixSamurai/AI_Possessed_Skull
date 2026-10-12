@@ -45,8 +45,8 @@ class Settings(BaseSettings):
     audio_input_chunk_ms: int = Field(100, ge=20, le=250)
     audio_suppress_mic_during_playback: bool = True
     ambience_enabled: bool = False
-    ambience_fresh_effects_enabled: bool = True
-    ambience_directory: Path = Path("assets/ambience")
+    ambience_fresh_effects_enabled: bool = False
+    ambience_directory: Path = Path("assets/ambience_library")
     ambience_duration_seconds: float = Field(25, ge=20, le=30)
     ambience_volume: float = Field(0.15, ge=0, le=0.5)
     ambience_during_conversation: bool = False

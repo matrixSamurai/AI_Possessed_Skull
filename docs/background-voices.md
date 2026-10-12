@@ -66,7 +66,7 @@ Add to your existing .env, then restart the real app:
 
 ```dotenv
 AMBIENCE_ENABLED=true
-AMBIENCE_DIRECTORY=assets/ambience
+AMBIENCE_DIRECTORY=assets/ambience_library
 AMBIENCE_DURATION_SECONDS=25
 AMBIENCE_VOLUME=0.15
 AMBIENCE_DURING_CONVERSATION=false
@@ -128,7 +128,7 @@ This feature does not resolve the separate ElevenLabs HTTP 400 image-upload reje
 
 ## Fresh effects for each burst
 
-With `AMBIENCE_ENABLED=true`, `AMBIENCE_FRESH_EFFECTS_ENABLED=true` (default)
+With `AMBIENCE_ENABLED=true`, `AMBIENCE_FRESH_EFFECTS_ENABLED=true` (opt-in)
 and your existing ElevenLabs API key, each new ambience burst requests one new
 five-second sound effect from ElevenLabs. A shuffled prompt bank rotates ghost
 wails, spectral whispers, phantom moans, eerie laughter, hollow howls, haunted
@@ -145,3 +145,22 @@ to the existing conversation/speaker echo guard, mute and emergency stop control
 Generated WAVs use temporary storage and are deleted after decoding; a maximum of
 16 clips remain in memory. Failed generation retains the existing clips. Set
 `AMBIENCE_FRESH_EFFECTS_ENABLED=false` to return to local cached effects only.
+
+## Included project collection
+
+The 12 effects uploaded by the owner are committed in `assets/ambience_library`.
+Original MP3s are preserved in its `originals/` subdirectory; ready-to-play WAVs
+are converted to 16 kHz mono PCM16, capped at 30 seconds. This collection is the
+default playback directory, with fresh generation disabled by default.
+
+Existing installations must update their `.env` overrides:
+
+```dotenv
+AMBIENCE_ENABLED=true
+AMBIENCE_DIRECTORY=assets/ambience_library
+AMBIENCE_FRESH_EFFECTS_ENABLED=false
+```
+
+Restart after pulling. The shuffle bag uses the whole bank before repeating,
+including across short bursts interrupted by conversation. Conversation pause,
+speaker echo guard, mute and emergency stop behavior still apply.

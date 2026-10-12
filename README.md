@@ -202,6 +202,8 @@ Session telemetry is in memory and resets when the application exits.
 No `.env`, audio recordings, raw transcripts or camera frames are committed or retained
 by default. ElevenLabs service-side retention is configured separately in your account.
 
-Fresh background effects are enabled by default when ambience and an ElevenLabs key
-are configured: `AMBIENCE_FRESH_EFFECTS_ENABLED=true` generates one new five-second
-effect per burst using sound-effect credits. Set it to `false` for cached-only playback.
+The repository includes 12 owner-selected ElevenLabs effects in
+`assets/ambience_library`. Set `AMBIENCE_ENABLED=true`,
+`AMBIENCE_DIRECTORY=assets/ambience_library`, and
+`AMBIENCE_FRESH_EFFECTS_ENABLED=false` to shuffle this collection without API calls.
+Fresh generation remains optional using `AMBIENCE_FRESH_EFFECTS_ENABLED=true`.
