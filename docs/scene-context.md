@@ -19,7 +19,7 @@ CONVERSATION_BACKEND=elevenlabs
 ELEVENLABS_AGENT_ID=your_existing_agent_id
 ELEVENLABS_API_KEY=your_existing_key
 VISION_CONTEXT_ENABLED=true
-VISION_CONTEXT_INTERVAL_SECONDS=10
+VISION_CONTEXT_INTERVAL_SECONDS=6
 VISION_CONTEXT_TIMEOUT_SECONDS=5
 VISION_CONTEXT_MAX_IMAGE_SIDE=640
 VISION_CONTEXT_DELIVERY_WAIT_SECONDS=15
@@ -44,7 +44,7 @@ files just because the SDK has an upload method. The SDK models file input as
 Suggested guidance for the agent system prompt:
 
 ```text
-You may receive camera images at the beginning and roughly every ten seconds.
+You may receive camera images at the beginning and roughly every six seconds.
 Use the latest image, compare visible changes and people counts, and treat it as
 background visual context rather than words spoken by the visitor. Continue in your
 MALACHI ghost persona; mention clearly visible clothing colors or nearby objects
@@ -83,8 +83,8 @@ upload/encoding/delivery failures produce a status without requesting session sh
 An unsupported backend may still reject the multimodal input at the service level;
 configure file support before enabling it.
 
-After the initial image, fresh snapshots are captured roughly every 10 seconds
-(configurable from 10 to 120 seconds). A single background task serializes captures,
+After the initial image, fresh snapshots are captured roughly every 6 seconds
+(configurable from 6 to 120 seconds). A single background task serializes captures,
 uploads and delivery; slow uploads or speech can delay updates, without a frame backlog.
 Each attachment asks the model to compare visible people counts and scene changes
 and use the latest observations in subsequent conversation. This is sampled vision,
@@ -105,7 +105,7 @@ retention, summarization and backend model processing follow ElevenLabs' setting
 terms. An uploaded but undelivered file may remain attached to the conversation;
 local cancellation does not guarantee remote deletion. File uploads can be billed
 under your ElevenLabs plan. Set server-side file limits appropriately (one upload
-roughly 19 attempts per default 180-second interaction) and VISION_CONTEXT_ENABLED=false to disable uploads.
+roughly 31 attempts per default 180-second interaction) and VISION_CONTEXT_ENABLED=false to disable uploads.
 
 ## Tests and troubleshooting
 

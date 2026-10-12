@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     elevenlabs_agent_id: str = ""
     elevenlabs_api_key: SecretStr = SecretStr("")
     vision_context_enabled: bool = False
-    vision_context_interval_seconds: float = Field(10, ge=10, le=120)
+    vision_context_interval_seconds: float = Field(6, ge=6, le=120)
     vision_context_timeout_seconds: float = Field(5, gt=0, le=10)
     vision_context_delivery_wait_seconds: float = Field(15, gt=0, le=30)
     vision_context_max_image_side: int = Field(640, ge=256, le=1280)

@@ -85,12 +85,12 @@ Use your existing ElevenLabs credentials—no separate GPT/OpenAI API key:
 
 ```dotenv
 VISION_CONTEXT_ENABLED=true
-VISION_CONTEXT_INTERVAL_SECONDS=10
+VISION_CONTEXT_INTERVAL_SECONDS=6
 ```
 
 Enable **file input / image uploads** on your ElevenLabs agent and choose an
 image-capable backend LLM through ElevenLabs. At interaction start, MALACHI captures
-a fresh webcam frame, connects voice, then repeats snapshots about every 10 seconds.
+a fresh webcam frame, connects voice, then repeats snapshots about every 6 seconds.
 Each frame is uploaded to the same conversation and delivered at a speech pause.
 The model is instructed to compare people counts and scene changes and use the
 latest image as context. The fixed first greeting is preserved.
