@@ -11,6 +11,7 @@ class AmbienceService:
     def __init__(self, settings, emit):
         self.engine = AmbienceEngine(settings)
         self.emit = emit
+        self.fresh_effects = None
         self.exit = threading.Event()
         self.lock = threading.Lock()
         self.voice_owns_output = False
@@ -45,7 +46,23 @@ class AmbienceService:
         stream = None
         try:
             self.engine.load()
+            if (
+                self.engine.settings.ambience_fresh_effects_enabled
+                and self.engine.settings.elevenlabs_api_key.get_secret_value()
+            ):
+                from malachi.ambience.fresh_effects import FreshEffects
+
+                self.fresh_effects = FreshEffects(
+                    self.engine.settings, self.engine.install_fresh, self.emit
+                )
+                if not self.engine.clips:
+                    self.fresh_effects.request()
+            last_burst = None
             while not self.exit.is_set():
+                if self.engine.active and self.engine.started != last_burst:
+                    last_burst = self.engine.started
+                    if self.fresh_effects is not None:
+                        self.fresh_effects.request()
                 with self.lock:
                     wanted = (
                         self.engine.active
@@ -110,3 +127,5 @@ class AmbienceService:
         self.engine.stop()
         self.exit.set()
         self.thread.join(2)
+        if self.fresh_effects is not None:
+            self.fresh_effects.close()

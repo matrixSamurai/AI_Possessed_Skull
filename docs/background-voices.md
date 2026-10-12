@@ -1,8 +1,8 @@
 # Detection-triggered scary background voices
 
-MALACHI plays a shuffled bank of local short voice clips when a face or sustained
-scene motion is detected. Use ElevenLabs voice IDs to generate them once; runtime
-playback does not call a paid API on every camera trigger.
+MALACHI plays short effects when a face or sustained scene motion is detected.
+Fresh-effects mode generates one new ElevenLabs effect per burst while cached clips
+provide immediate playback. Local-only mode shuffles previously generated WAV clips.
 
 ## Sound effect: whispering ghost wail
 
@@ -17,7 +17,8 @@ This uses your existing ELEVENLABS_API_KEY and the official ElevenLabs sound-eff
 API (`eleven_text_to_sound_v2`), generating three cached variations with no voice ID.
 The prompt asks for atmospheric nonverbal horror ambience without intelligible speech
 or music. Actual style/quality must be auditioned locally. Generation uses sound-effect
-credits; playing cached files on detection uses no API calls. Each request has no automatic
+credits; cached playback itself uses no API calls. Fresh-effects mode additionally
+requests a new effect for each burst. Each request has no automatic
 retries and a 60-second timeout; WAV output is validated, bounded and cached.
 
 The name is a **generation description**, not an identifier for downloading an existing
@@ -124,3 +125,23 @@ Mac playback were verified in the cloud (no credentials/audio devices).
 Provide the desired voice IDs and phrases, or generate clips locally using the command
 above. Until clips are present and ambience is enabled, the background system is quiet.
 This feature does not resolve the separate ElevenLabs HTTP 400 image-upload rejection.
+
+## Fresh effects for each burst
+
+With `AMBIENCE_ENABLED=true`, `AMBIENCE_FRESH_EFFECTS_ENABLED=true` (default)
+and your existing ElevenLabs API key, each new ambience burst requests one new
+five-second sound effect from ElevenLabs. A shuffled prompt bank rotates ghost
+wails, spectral whispers, phantom moans, eerie laughter, hollow howls, haunted
+wind, wordless spectral choirs, and haunted-door effects. This generates audio;
+it does not browse or download a curated website collection.
+
+Cached clips play immediately while generation runs in a separate worker. A fresh
+effect is selected at the next clip boundary once available; slow generation may
+make it available for a later burst. Empty banks request a bootstrap effect at startup.
+One request runs at a time, overlapping requests coalesce, and the API is not retried
+on failure. Generation uses ElevenLabs sound-effect credits. Playback remains subject
+to the existing conversation/speaker echo guard, mute and emergency stop controls.
+
+Generated WAVs use temporary storage and are deleted after decoding; a maximum of
+16 clips remain in memory. Failed generation retains the existing clips. Set
+`AMBIENCE_FRESH_EFFECTS_ENABLED=false` to return to local cached effects only.

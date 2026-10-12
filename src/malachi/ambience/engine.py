@@ -1,4 +1,4 @@
-"""Bounded, shuffled local PCM playback; detection never invokes a paid API."""
+"""Bounded, shuffled local PCM playback; audio callbacks never invoke a paid API."""
 
 import random
 import threading
@@ -59,6 +59,15 @@ class AmbienceEngine:
             )
             if bad:
                 self.status += f" ({bad} invalid files skipped)"
+
+    def install_fresh(self, clip):
+        with self.lock:
+            # Current PCM may finish; the new effect is selected next.
+            self.clips = (self.clips + [clip])[-16:]
+            self.bag = list(range(len(self.clips) - 1))
+            self.rng.shuffle(self.bag)
+            self.bag.append(len(self.clips) - 1)
+            self.last_clip = None
 
     def stop(self):
         with self.lock:
