@@ -99,7 +99,7 @@ class StateMachine:
         elif self.facing_since is None:
             self.facing_since = now
             self.transition(State.STALKING, "visitor facing skull", now)
-        elif self.qualification(now) >= 1:
+        elif now >= self.facing_since + self.settings.face_facing_hold_seconds:
             self.start(now)
 
     def start(self, now):
