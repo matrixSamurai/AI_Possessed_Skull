@@ -238,3 +238,13 @@ a configured threshold, not a per-face probability. Crop scans add CPU work; dis
 FACE_FAR_SCAN_ENABLED or increase the interval on slower machines. Face pixel size,
 lighting and blur still limit detection; distance improvements need testing with
 your real camera. No additional model download or paid API is required.
+
+## Animated possessed eyes
+
+The desktop skull's eyes gradually shift from watchful teal to crimson as visitors
+qualify and a conversation awakens. Branching veins fade into the sclera, pupils
+narrow, inward-slanted lids create an angry stare, iris fibers move subtly, and a
+slow red halo breathes around the sockets. Intensity varies gently during conversation
+and settles during cooldown or emergency stop. Blinking and face-following remain
+active; the effects do not alter servo motion or voice behavior. This is theatrical
+state-driven animation, not emotion recognition or an LLM-controlled anger signal.

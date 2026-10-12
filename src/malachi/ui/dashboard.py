@@ -312,6 +312,13 @@ class Dashboard(QMainWindow):
                 self.log.appendPlainText(self.hardware.error)
                 self.hardware.error = ""
                 self.emergency_stop()
+        self.skull.effects.update(
+            state,
+            now,
+            self.machine.qualification(now),
+            self.manager.audio.agent_speaking,
+            self.machine.emergency,
+        )
         self.skull.blink = now < self.eyes.blink_until
         self.skull.update()
         self.preview.show_frame(frame, faces, self.face)
