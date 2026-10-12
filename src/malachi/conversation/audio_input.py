@@ -11,6 +11,7 @@ class AudioDuplex:
     def __init__(self, playback, emit, jaw_emit):
         self.playback, self.emit, self.jaw_emit = playback, emit, jaw_emit
         self.mic_muted = False
+        self.opening_pending = False
         self.ambience = None
         self.active = False
         self.input = self.output_stream = None
@@ -78,7 +79,7 @@ class AudioDuplex:
             (self.playback.samples > 0 and not self.playback.muted)
             or now < self.speaker_guard_until
         )
-        if self.mic_muted or guarded:
+        if self.mic_muted or self.opening_pending or guarded:
             audio.fill(0)
         rms = float(np.sqrt(np.mean((audio.astype(np.float32) / 32768) ** 2)))
         if rms > 0.025:

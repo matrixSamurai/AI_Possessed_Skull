@@ -184,3 +184,10 @@ def test_audio_and_ping_continue_during_native_image_upload(monkeypatch, setting
     assert any(p.get("type") == "multimodal_message" for p in sent)
     assert any(e.kind == "connected" for e in events)
     assert any(e.kind == "scene" and "sent" in e.detail for e in events)
+
+
+def test_image_greeting_suppresses_configured_first_message(monkeypatch, settings):
+    settings.vision_context_enabled = True
+    settings.vision_greeting_enabled = True
+    _, _, sent = run_adapter(monkeypatch, settings, [metadata()])
+    assert sent[0]["conversation_config_override"] == {"agent": {"first_message": ""}}

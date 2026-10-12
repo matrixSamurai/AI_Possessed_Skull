@@ -322,3 +322,51 @@ def test_unsupported_model_disables_periodic_uploads(enabled):
     client.snapshot_provider = lambda: pytest.fail("Unsupported model must not keep capturing")
     asyncio.run(client._snapshot_loop(None, "session", threading.Event()))
     assert uploader.calls == 1 and client.image_upload_disabled
+
+
+def test_visual_opening_uses_image_only_once(enabled):
+    import json
+
+    class Uploader:
+        async def upload(self, *args):
+            return "file_visual"
+
+    class Socket:
+        sent = []
+
+        async def send(self, message):
+            self.sent.append(json.loads(message))
+
+    client = make_client(enabled, Uploader())
+    client.greeting_pending = True
+    client.opening_style = "a playful supernatural question"
+    client.audio.opening_pending = True
+    socket = Socket()
+    client.snapshot = PreparedSnapshot(b"jpeg")
+    asyncio.run(client._deliver_snapshot(socket, "session", threading.Event()))
+    assert "FIRST greeting" in socket.sent[0]["text"]["text"]
+    assert "THIS attached image" in socket.sent[0]["text"]["text"]
+    assert not client.greeting_pending and not client.audio.opening_pending
+    client.snapshot = PreparedSnapshot(b"next jpeg")
+    asyncio.run(client._deliver_snapshot(socket, "session", threading.Event()))
+    assert "FIRST greeting" not in socket.sent[1]["text"]["text"]
+
+
+def test_missing_image_requests_honest_fallback_opening(enabled):
+    import json
+
+    class Socket:
+        sent = []
+
+        async def send(self, message):
+            self.sent.append(json.loads(message))
+
+    client = make_client(enabled, None)
+    client.greeting_pending = True
+    client.opening_style = "a cryptic welcome"
+    client.audio.opening_pending = True
+    socket = Socket()
+    asyncio.run(client._deliver_snapshot(socket, "session", threading.Event()))
+    assert len(socket.sent) == 1 and socket.sent[0]["type"] == "user_message"
+    assert "No usable image" in socket.sent[0]["text"]
+    assert not client.greeting_pending and not client.audio.opening_pending

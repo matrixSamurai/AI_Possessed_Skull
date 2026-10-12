@@ -119,3 +119,34 @@ class ElevenLabsImageUploader:
         if not isinstance(result.file_id, str) or not result.file_id:
             raise ValueError("Missing uploaded file ID")
         return result.file_id
+
+
+OPENING_STYLES = (
+    "a playful supernatural question",
+    "a cryptic observation followed by an invitation to speak",
+    "a mischievous whisper welcoming the visitor",
+    "a theatrical but friendly warning about wandering spirits",
+    "a dry, ancient ghost's witty welcome",
+    "a mysterious question about what brought the visitor here",
+)
+
+
+def opening_instruction(style, has_image=True):
+    evidence = (
+        "Use one clearly visible detail from THIS attached image: clothing color, "
+        "spectacles, surroundings, or the visible people count. If unclear, admit uncertainty."
+        if has_image
+        else "No usable image is available. Do not claim to see anyone or invent visual details."
+    )
+    return (
+        "This is the FIRST greeting of this interaction. Generate and speak the opening now. "
+        + evidence
+        + " Use "
+        + style
+        + ". Keep it to one or two short sentences, "
+        "roughly 10-25 words, in the configured conversation language and ghost persona. "
+        "Invent fresh wording; avoid the stock 'I sense a living soul' greeting. "
+        "Finish with an engaging question when natural. Later snapshots are updates, "
+        "not new greetings. This first-opening instruction takes precedence over the "
+        "earlier instruction not to restart greetings."
+    )

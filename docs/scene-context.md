@@ -34,7 +34,7 @@ Restart the real app without --demo or --vision-only.
 Enable **file input / image uploads** in your agent's conversation configuration.
 Select a **multimodal, image-capable LLM** available through ElevenLabs' managed model
 selection. A voice/TTS model alone does not interpret images. Keep your existing
-voice and greeting. MALACHI does not create or modify your agent configuration.
+voice. With visual greetings enabled, allow first-message overrides in agent security. MALACHI does not create or modify your agent configuration.
 
 If the UI does not expose file input for your agent, check its supported model and
 account feature availability. Do not assume every model, account or transport accepts
@@ -112,8 +112,9 @@ Multimodal input is a **conversation turn** and can generate an agent response. 
 not the previous non-interrupting text contextual_update. Delivery waits for queued
 speech and detected user/agent activity to clear, including a brief greeting settle
 window, to reduce accidental interruption. This is best-effort coordination, not a
-service guarantee of exact turn ordering. The fixed first greeting remains unchanged;
-visual context can influence subsequent responses after the image arrives.
+service guarantee of exact turn ordering. With visual greetings enabled, the configured fixed first message is overridden
+to an empty string. The first attached image requests a newly generated visual greeting;
+subsequent images update context without restarting greetings.
 
 Upload has a 5-second configurable timeout and no automatic retries. Delivery waits
 up to 15 seconds for a pause, then skips the image if speech continues. Camera, eyes,
@@ -191,8 +192,8 @@ and an accurate answer to visual questions; it cannot make a text-only model see
 
 The ElevenLabs Client data panel's visual_context dynamic variable is a connection-time
 compatibility placeholder, not the image or an analysis result. File input arrives later
-as a separate multimodal conversation message. 'No client overrides' is expected: MALACHI
-does not override your selected model, prompt or agent configuration. Check attachment
+as a separate multimodal conversation message. Visual greetings override only the
+first message to an empty string; the model, voice and system prompt are retained. Check attachment
 messages and the local delivery status instead of treating that panel as upload evidence.
 
 ## HTTP 400 upload rejection
@@ -220,3 +221,21 @@ not printed. Check the lines immediately before the transition to diagnose the c
 Repeated images consume conversation file/context capacity; configure the agent's
 file limits for the intended session duration. A failure near an image interval alone
 does not establish that file limits or image input caused it.
+
+## Varied opening based on the first image
+
+`VISION_GREETING_ENABLED=true` (default) applies when `VISION_CONTEXT_ENABLED=true`.
+In the ElevenLabs agent Security / client override settings, enable **First message**
+overrides and save before launching. The client sends an empty first-message override
+so the static greeting does not play before the image arrives. If this permission is
+not enabled, ElevenLabs may reject session initiation; use
+`VISION_GREETING_ENABLED=false` to retain the configured greeting until configured.
+
+The first photo requests a 10–25 word greeting using a visible clothing, glasses,
+room or people-count detail. Six opening styles shuffle across interactions without
+immediate repeats within the running app. The LLM generates fresh wording; exact
+uniqueness is not guaranteed. The opening is requested after upload, so expect a
+short delay. Microphone input is temporarily silenced while preparing the opening,
+then normal speaker echo protection resumes. A missing/rejected/timed-out image
+requests a varied nonvisual greeting without invented observations. Stop/cancellation
+does not send a fallback greeting. No separate vision provider or API key is used.

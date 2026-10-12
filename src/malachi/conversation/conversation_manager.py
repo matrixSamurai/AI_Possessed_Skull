@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import queue
+import random
 import threading
 import time
 import numpy as np
@@ -30,6 +31,8 @@ class ConversationManager:
         self.scene_status = "Disabled"
         self.pending_frame = None
         self.snapshot_provider = None
+        self.opening_styles = []
+        self.last_opening_style = None
         self.mock_reply = threading.Event()
         self.ambience = None
         if settings.ambience_enabled:
@@ -118,6 +121,18 @@ class ConversationManager:
         snapshot = self._prepare_snapshot(frame) if not self.stop_event.is_set() else None
         frame = None
         factory = self.factory or ElevenLabsClient
+        from malachi.vision.scene_context import OPENING_STYLES
+
+        if not self.opening_styles:
+            self.opening_styles = list(OPENING_STYLES)
+            random.shuffle(self.opening_styles)
+            if self.opening_styles[-1] == self.last_opening_style:
+                self.opening_styles[0], self.opening_styles[-1] = (
+                    self.opening_styles[-1],
+                    self.opening_styles[0],
+                )
+        style = self.opening_styles.pop()
+        self.last_opening_style = style
         try:
             for attempt in range(3):
                 if self.stop_event.is_set():
@@ -125,6 +140,7 @@ class ConversationManager:
                 try:
                     client = factory(self.settings, self.playback, self.audio, self.emit)
                     client.snapshot_provider = self.snapshot_provider
+                    client.opening_style = style
                     if snapshot is not None:
                         client.snapshot = snapshot
                     await client.run(self.stop_event)

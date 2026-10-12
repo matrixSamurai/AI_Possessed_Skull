@@ -93,7 +93,9 @@ image-capable backend LLM through ElevenLabs. At interaction start, MALACHI capt
 a fresh webcam frame, connects voice, then repeats snapshots about every 6 seconds.
 Each frame is uploaded to the same conversation and delivered at a speech pause.
 The model is instructed to compare people counts and scene changes and use the
-latest image as context. The fixed first greeting is preserved.
+latest image as context. The first image requests a varied, visually grounded opening. Enable **First message**
+client overrides in the ElevenLabs agent Security settings; otherwise set
+`VISION_GREETING_ENABLED=false` to retain the configured greeting.
 
 The photo is uploaded to ElevenLabs but not saved locally. Demo and vision-only modes
 never upload. Upload is timeout-bounded and optional; camera tracking, audio and

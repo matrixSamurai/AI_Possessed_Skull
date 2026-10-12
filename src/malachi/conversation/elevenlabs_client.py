@@ -7,6 +7,7 @@ Only recognized documented events are consumed; no transcript is persisted.
 import asyncio
 import base64
 import json
+import random
 from malachi.events import ConversationEvent
 
 
@@ -27,6 +28,8 @@ class ElevenLabsClient:
         self.image_uploader = image_uploader
         self.last_audio_received = None
         self.connected_at = None
+        self.greeting_pending = False
+        self.opening_style = None
 
     async def _deliver_snapshot(self, ws, conversation_id, stop):
         from malachi.vision.scene_context import ElevenLabsImageUploader, PHOTO_INSTRUCTIONS
@@ -37,6 +40,8 @@ class ElevenLabsClient:
         jpeg = self.snapshot.take() if self.snapshot is not None else None
         self.snapshot = None
         if not jpeg or stop.is_set():
+            if self.greeting_pending and not stop.is_set():
+                await self._fallback_greeting(ws, stop)
             return
         try:
             self.emit(
@@ -69,10 +74,17 @@ class ElevenLabsClient:
                 else:
                     settling = now - self.last_audio_received < 0.35
                 if not pending and not settling:
+                    text = PHOTO_INSTRUCTIONS
+                    if self.greeting_pending:
+                        from malachi.vision.scene_context import opening_instruction
+
+                        text += "\n\n" + opening_instruction(self.opening_style)
                     message = MultimodalMessageClientToOrchestratorEvent(
-                        text=PHOTO_INSTRUCTIONS, file_ids=[file_id]
+                        text=text, file_ids=[file_id]
                     ).to_dict()
                     await asyncio.wait_for(ws.send(json.dumps(message)), timeout=2)
+                    self.greeting_pending = False
+                    self.audio.opening_pending = False
                     self.emit(
                         ConversationEvent(kind="scene", detail="Snapshot sent to ElevenLabs agent")
                     )
@@ -86,6 +98,9 @@ class ElevenLabsClient:
                     )
                     return
                 await asyncio.sleep(0.05)
+        except asyncio.CancelledError:
+            self.greeting_pending = False
+            raise
         except asyncio.TimeoutError:
             self.emit(
                 ConversationEvent(
@@ -110,6 +125,39 @@ class ElevenLabsClient:
             )
         finally:
             jpeg = None
+            if self.greeting_pending and not stop.is_set():
+                await self._fallback_greeting(ws, stop)
+
+    async def _fallback_greeting(self, ws, stop):
+        from malachi.vision.scene_context import opening_instruction
+
+        if stop.is_set():
+            return
+        self.greeting_pending = False
+        self.audio.opening_pending = False
+        try:
+            await asyncio.wait_for(
+                ws.send(
+                    json.dumps(
+                        {
+                            "type": "user_message",
+                            "text": opening_instruction(self.opening_style, has_image=False),
+                        }
+                    )
+                ),
+                timeout=2,
+            )
+            self.emit(
+                ConversationEvent(
+                    kind="scene", detail="Visual opening unavailable; requested nonvisual greeting"
+                )
+            )
+        except Exception:
+            self.emit(
+                ConversationEvent(
+                    kind="scene", detail="Opening delivery failed; voice input remains available"
+                )
+            )
 
     async def _snapshot_loop(self, ws, conversation_id, stop):
         from malachi.vision.scene_context import PreparedSnapshot, encode_snapshot
@@ -169,6 +217,12 @@ class ElevenLabsClient:
                     "Do not invent details if no image is available."
                 },
             }
+            if self.settings.vision_context_enabled and self.settings.vision_greeting_enabled:
+                from malachi.vision.scene_context import OPENING_STYLES
+
+                self.greeting_pending = True
+                self.opening_style = self.opening_style or random.choice(OPENING_STYLES)
+                initiation["conversation_config_override"] = {"agent": {"first_message": ""}}
             await ws.send(json.dumps(initiation))
             loop = asyncio.get_running_loop()
 
@@ -198,11 +252,16 @@ class ElevenLabsClient:
                             or meta.get("user_input_audio_format") != "pcm_16000"
                         ):
                             raise ValueError("Configure agent input and output as PCM 16000")
+                        self.audio.opening_pending = self.greeting_pending
                         await asyncio.to_thread(self.audio.start, send)
                         ready = True
                         self.connected_at = loop.time()
                         self.emit(ConversationEvent(kind="connected"))
-                        if self.snapshot is not None or self.snapshot_provider is not None:
+                        if (
+                            self.snapshot is not None
+                            or self.snapshot_provider is not None
+                            or self.greeting_pending
+                        ):
                             snapshot_task = asyncio.create_task(
                                 self._snapshot_loop(ws, meta["conversation_id"], stop)
                             )
@@ -256,6 +315,7 @@ class ElevenLabsClient:
                     elif kind == "error":
                         raise ElevenLabsServiceError(message)
             finally:
+                self.audio.opening_pending = False
                 if snapshot_task is not None:
                     snapshot_task.cancel()
                     await asyncio.gather(snapshot_task, return_exceptions=True)
