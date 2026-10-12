@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     ambience_directory: Path = Path("assets/ambience_library")
     ambience_duration_seconds: float = Field(25, ge=20, le=30)
     ambience_volume: float = Field(0.15, ge=0, le=0.5)
-    ambience_during_conversation: bool = False
+    ambience_during_conversation: bool = True
     ambience_trigger_hold_seconds: float = Field(0.3, gt=0, le=3)
     ambience_rearm_seconds: float = Field(3, gt=0, le=30)
     ambience_cooldown_seconds: float = Field(10, ge=0, le=120)

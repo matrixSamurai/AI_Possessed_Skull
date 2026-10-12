@@ -69,7 +69,7 @@ AMBIENCE_ENABLED=true
 AMBIENCE_DIRECTORY=assets/ambience_library
 AMBIENCE_DURATION_SECONDS=25
 AMBIENCE_VOLUME=0.15
-AMBIENCE_DURING_CONVERSATION=false
+AMBIENCE_DURING_CONVERSATION=true
 ```
 
 - Sustained face presence or scene motion for 300 ms triggers a 25-second playback
@@ -91,28 +91,25 @@ AMBIENCE_DURING_CONVERSATION=false
   can disable/re-enable it during a run when it was enabled at startup.
 - Background voices never drive the skull jaw or count as agent speech/activity.
 
-The dashboard reports readiness, missing clips, playback time and conversation pause.
+The dashboard reports readiness, missing clips, playback time and the conversation volume.
 Missing/invalid files leave ordinary vision and conversations usable. --demo disables
 real background audio. --vision-only can still play cached clips with the actual
 camera if AMBIENCE_ENABLED=true; it requires no live voice session or TTS request.
 
 ## During conversation
 
-**MacBook speakers:** keep AMBIENCE_DURING_CONVERSATION=false. The playback window
-pauses at AWAKENING/CONVERSING/ENDING; its wall-clock deadline still expires after
-25 seconds, so conversation pauses may shorten audible playback. This avoids repeating
-background phrases into the microphone. Echo-guard-enabled conversations always pause
-ambience even if the overlap setting is true.
+Background effects now continue through AWAKENING, CONVERSING and ENDING at **30%
+of the configured AMBIENCE_VOLUME**, including pauses between agent replies. Outside
+conversation they use 100% of AMBIENCE_VOLUME. The gain changes smoothly. The usual
+25-second burst remains active for the full conversation, then gets a fresh 25-second
+window at normal volume before stopping. Set AMBIENCE_DURING_CONVERSATION=false if
+you explicitly want conversation silence instead.
 
-**Headphones:** you may set AMBIENCE_DURING_CONVERSATION=true and
-AUDIO_SUPPRESS_MIC_DURING_PLAYBACK=false. Background clips are then mixed quietly into
-the existing conversation output and ducked further while either party speaks. This
-uses one output stream; idle background output is closed before the conversation
-player takes the device. The acoustic tail from idle playback is retained in the mic
-guard when handing over to a speaker-mode conversation.
-
-There is no acoustic echo cancellation. Do not enable overlapping ambience on speakers
-with the echo guard disabled and expect reliable transcription.
+The Speaker echo guard remains available for the agent's own speech. Background PCM
+does not drive the jaw, agent-speaking events, or a permanent microphone mute. It is
+not acoustically echo-cancelled: MacBook microphones may still pick up background
+effects. Keep the normal background level modest; headphones provide better isolation.
+Idle-output handover retains its short acoustic-tail guard.
 
 ## Validation and remaining setup
 
@@ -140,7 +137,7 @@ effect is selected at the next clip boundary once available; slow generation may
 make it available for a later burst. Empty banks request a bootstrap effect at startup.
 One request runs at a time, overlapping requests coalesce, and the API is not retried
 on failure. Generation uses ElevenLabs sound-effect credits. Playback remains subject
-to the existing conversation/speaker echo guard, mute and emergency stop controls.
+to the existing conversation volume setting, mute and emergency stop controls.
 
 Generated WAVs use temporary storage and are deleted after decoding; a maximum of
 16 clips remain in memory. Failed generation retains the existing clips. Set
@@ -162,5 +159,5 @@ AMBIENCE_FRESH_EFFECTS_ENABLED=false
 ```
 
 Restart after pulling. The shuffle bag uses the whole bank before repeating,
-including across short bursts interrupted by conversation. Conversation pause,
-speaker echo guard, mute and emergency stop behavior still apply.
+including across bursts. Conversation effects play at 30% of their configured
+normal volume; mute and emergency stop still apply.

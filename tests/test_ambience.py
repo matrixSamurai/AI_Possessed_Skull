@@ -62,16 +62,17 @@ def test_quiet_rearm_and_cooldown(enabled):
     assert e.active
 
 
-def test_speaker_safe_pause_headphone_overlap_mute_and_stop(enabled):
+def test_conversation_overlap_with_guard_mute_and_stop(enabled):
     e, clock = engine(enabled)
     update(e, 0, present=True)
     update(e, 0.3, present=True)
     clock[0] = 1
+    enabled.ambience_during_conversation = False
     update(e, 1, present=True, conversation=True)
     assert not e.render(320).any()
     enabled.ambience_during_conversation = True
     update(e, 1, present=True, conversation=True, guard=True)
-    assert not e.render(320).any()
+    assert e.render(320).any()
     update(e, 1, present=True, conversation=True, guard=False)
     assert e.render(320).any()
     update(e, 1, muted=True)
@@ -247,3 +248,46 @@ def test_each_new_burst_uses_remaining_variations_before_repeating(enabled):
         e.stop()
     assert len(set(choices[:3])) == 3 and len(set(choices[3:])) == 3
     assert all(a != b for a, b in zip(choices, choices[1:]))
+
+
+def test_conversation_is_thirty_percent_even_between_replies(enabled):
+    e, clock = engine(enabled)
+    e.clips = [np.full(16000 * 5, 0.5, np.float32)]
+    update(e, 0, present=True)
+    update(e, 0.3, present=True)
+    clock[0] = 1
+    e.position = 200
+    e.current = e.clips[0]
+    normal = e.render(320)[-1]
+    update(e, 1, present=True, conversation=True)
+    for _ in range(30):
+        e.render(320)
+    reduced = e.render(320)[-1]
+    assert reduced == pytest.approx(normal * 0.3, rel=0.001)
+    # Continue past the original 25-second burst until the conversation ends.
+    clock[0] = 60
+    update(e, 60, present=True, conversation=True)
+    assert e.active and e.render(320).any()
+    update(e, 61, present=True, conversation=False)
+    clock[0] = 61
+    for _ in range(30):
+        e.render(320)
+    assert e.render(320)[-1] == pytest.approx(normal, rel=0.001)
+    update(e, 86, present=True)
+    assert not e.active
+
+
+def test_background_does_not_permanently_mute_microphone(enabled):
+    playback = PlaybackBuffer(enabled)
+    duplex = AudioDuplex(playback, lambda e: None, lambda *args: None)
+    duplex.ambience = SimpleNamespace(render=lambda *a: np.full(320, 0.1))
+    data = np.zeros((320, 1), np.float32)
+    timing = SimpleNamespace(currentTime=0, outputBufferDacTime=0)
+    duplex._output(data, 320, timing, False)
+    assert data.any() and duplex.speaker_guard_until == 0
+    duplex._input(np.full((320, 1), 3000, np.int16), 320, timing, False)
+    assert any(duplex.queue.get_nowait()) and duplex.user_speaking
+    playback.settings.audio_playback_buffer_ms = 0
+    playback.push(np.full(320, 3000, dtype="<i2").tobytes())
+    duplex._output(data, 320, timing, False)
+    assert duplex.speaker_guard_until > time.monotonic()

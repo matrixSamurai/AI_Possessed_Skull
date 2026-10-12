@@ -117,7 +117,9 @@ Sound-effect titles are generation prompts; exact saved effects require their au
 Set AMBIENCE_ENABLED=true in .env and restart. Faces or sustained scene motion trigger
 25 seconds of shuffled low-volume voices, with rearming/cooldown rather than endless
 retriggering. Background clips do not animate the jaw. Speaker-mode conversations
-pause them; headphone users can opt into mixed, ducked playback during conversations.
+play them at 30% of their normal volume throughout conversation, and at normal
+volume outside conversation. Set `AMBIENCE_DURING_CONVERSATION=true` in an existing
+`.env` to enable this behavior.
 Clip generation uses TTS credits; detection/playback reuse local files without API calls.
 See [background voices](docs/background-voices.md) for settings, formats and setup.
 

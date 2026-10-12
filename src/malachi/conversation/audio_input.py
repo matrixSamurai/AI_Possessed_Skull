@@ -103,6 +103,7 @@ class AudioDuplex:
 
     def _output(self, data, frames, timing, status):
         samples, jaw, generation = self.playback.render(frames)
+        agent_audible = bool(np.any(samples))
         # Only agent PCM drives jaw/speaking telemetry. Background voices are a
         # separate quiet channel mixed here so only one device output is active.
         if self.ambience is not None:
@@ -113,7 +114,7 @@ class AudioDuplex:
         delay = max(0, timing.outputBufferDacTime - timing.currentTime)
         now = time.monotonic()
         self.jaw_emit(jaw, now + delay, generation)
-        if np.any(samples):
+        if agent_audible:
             self.speaker_guard_until = now + delay + frames / 16000 + 0.3
         speaking = self.playback.speaking
         if speaking != self.agent_speaking:
