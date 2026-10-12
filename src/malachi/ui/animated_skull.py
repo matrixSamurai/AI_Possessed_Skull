@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import QColor, QPainter, QRadialGradient, QFont, QPainterPath, QPen, QImage
 from PySide6.QtWidgets import QWidget
 from malachi.ui.eye_effects import EyeEffects
+from malachi.ui.underlighting import UnderLighting
 
 
 class AnimatedSkull(QWidget):
@@ -12,16 +13,17 @@ class AnimatedSkull(QWidget):
         self.motion, self.eyes = motion, eyes
         self.blink = False
         self.effects = EyeEffects()
+        self.underlight = UnderLighting()
         self.reflection = None
         self.reflection_updated = float("-inf")
         self.veins = self._vein_paths()
-        self.setMinimumSize(360, 390)
+        self.setMinimumSize(360, 450)
 
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        p.translate(self.width() / 2, self.height() / 2 - 5)
-        scale = min(self.width() / 420, self.height() / 420)
+        scale = min(self.width() / 420, self.height() / 500)
+        p.translate(self.width() / 2, self.height() / 2 - 30 * scale)
         p.scale(scale, scale)
         p.setPen(Qt.PenStyle.NoPen)
         glow = QRadialGradient(0, -20, 220)
@@ -29,6 +31,7 @@ class AnimatedSkull(QWidget):
         glow.setColorAt(1, QColor("#101017"))
         p.setBrush(glow)
         p.drawEllipse(QRectF(-210, -210, 420, 420))
+        self._paint_underlight(p)
         bone = QRadialGradient(-48, -105, 270)
         bone.setColorAt(0, QColor("#c0b7a2"))
         bone.setColorAt(0.5, QColor("#928777"))
@@ -46,6 +49,16 @@ class AnimatedSkull(QWidget):
         skull.cubicTo(160, -109, 132, -183, 0, -174)
         skull.closeSubpath()
         p.drawPath(skull)
+        # Reflected uplight colors the lower bone while preserving facial detail.
+        p.save()
+        p.setClipPath(skull)
+        light = self.underlight.frame
+        bounce = QRadialGradient(0, 110, 160)
+        bounce.setColorAt(0, QColor(*light.rgb, round(95 * light.brightness)))
+        bounce.setColorAt(1, QColor(*light.rgb, 0))
+        p.setBrush(bounce)
+        p.drawPath(skull)
+        p.restore()
         p.setPen(QPen(QColor("#554e46"), 1.1))
         crack = QPainterPath(QPointF(-8, -165))
         for point in [(-13, -146), (-5, -137), (-12, -124), (-9, -113)]:
@@ -77,7 +90,7 @@ class AnimatedSkull(QWidget):
         p.setPen(QColor("#bb819d"))
         p.setFont(QFont("Arial", 9))
         p.drawText(
-            QRectF(-190, 180, 380, 25),
+            QRectF(-190, 255, 380, 25),
             Qt.AlignmentFlag.AlignCenter,
             f"{self.effects.preset.upper()} GAZE   •   PAN {self.eyes.angles()[0]:+.1f}°   TILT {self.eyes.angles()[1]:+.1f}°",
         )
@@ -269,4 +282,41 @@ class AnimatedSkull(QWidget):
                     )
                 p.setPen(QPen(QColor(155, 170, 196, 85), 0.8))
                 p.drawPath(path)
+        p.restore()
+
+    def _paint_underlight(self, p):
+        light = self.underlight.frame
+        if light.brightness <= 0:
+            return
+        p.save()
+        p.setPen(Qt.PenStyle.NoPen)
+        # Wide soft pool underneath the skull.
+        p.translate(0, 224)
+        p.scale(1, 0.24)
+        pool = QRadialGradient(0, 0, 184)
+        pool.setColorAt(0, QColor(*light.rgb, round(210 * light.brightness)))
+        pool.setColorAt(0.45, QColor(*light.rgb, round(100 * light.brightness)))
+        pool.setColorAt(1, QColor(*light.rgb, 0))
+        p.setBrush(pool)
+        p.drawEllipse(QRectF(-184, -184, 368, 368))
+        p.restore()
+        # Haze rises from the future LED location toward the chin.
+        p.save()
+        beam = QPainterPath(QPointF(-155, 226))
+        beam.lineTo(-60, 58)
+        beam.lineTo(60, 58)
+        beam.lineTo(155, 226)
+        beam.closeSubpath()
+        haze = QRadialGradient(0, 225, 190)
+        haze.setColorAt(0, QColor(*light.rgb, round(105 * light.brightness)))
+        haze.setColorAt(1, QColor(*light.rgb, 0))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(haze)
+        p.drawPath(beam)
+        # A slim diffused emitter suggests the LED strip beneath the skull.
+        emitter = QRadialGradient(0, 226, 105)
+        emitter.setColorAt(0, QColor(*light.rgb, round(235 * light.brightness)))
+        emitter.setColorAt(1, QColor(*light.rgb, 0))
+        p.setBrush(emitter)
+        p.drawRoundedRect(QRectF(-100, 221, 200, 9), 4, 4)
         p.restore()

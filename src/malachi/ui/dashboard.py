@@ -327,6 +327,14 @@ class Dashboard(QMainWindow):
             self.manager.audio.agent_speaking,
             self.machine.emergency,
         )
+        self.skull.underlight.update(
+            self.skull.effects.preset,
+            self.skull.effects.accent,
+            self.skull.effects.intensity,
+            self.skull.effects.phase,
+            now,
+            emergency=self.machine.emergency,
+        )
         if self.skull.effects.preset == "mirror":
             self.skull.set_reflection(None if error or not faces else frame, now, self.face)
         else:

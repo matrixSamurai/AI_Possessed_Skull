@@ -254,3 +254,8 @@ hypnosis, mischievous, mirror and calm. The ElevenLabs agent can choose them thr
 `set_eye_effect` once its client tool is configured. See
 [agent eye animation setup](docs/eye-animation-tools.md) for the exact tool definition
 and prompt. Automatic effects run immediately even before tool setup.
+
+The desktop skull also has synchronized underlighting: a diffused LED-strip preview,
+floor glow and upward haze that follow the eye animation. Emergency stop extinguishes
+it. Its separate RGB/brightness/effect state can later drive physical LEDs beneath
+the skull. See [under-skull lighting](docs/under-skull-lighting.md).
