@@ -306,7 +306,7 @@ def test_periodic_images_are_fresh_serial_and_stop_with_session(enabled):
     assert len(frames) == 2 and len(uploads) == 3
     assert uploads[0] == b"initial" and uploads[1] != uploads[2]
     assert len(messages) == 3 and client.snapshot is None
-    assert all("supersedes older images" in m["text"]["text"] for m in messages)
+    assert all("latest camera snapshot" in m["text"]["text"] for m in messages)
 
     assert all(b - a >= 0.02 for a, b in zip(delivery_times, delivery_times[1:]))
 
