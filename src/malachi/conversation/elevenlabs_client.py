@@ -206,6 +206,31 @@ class ElevenLabsClient:
         )
         if stop.is_set():
             return
+        visual_opening = False
+        override_first_message = False
+        if self.settings.vision_context_enabled and self.settings.vision_greeting_enabled:
+            from malachi.diagnostics import check_agent
+
+            try:
+                config = await asyncio.to_thread(check_agent, self.settings)
+                override_first_message = config["first_message_override_allowed"]
+                visual_opening = override_first_message or config["first_message_empty"]
+            except Exception as exc:
+                self.emit(
+                    ConversationEvent(
+                        kind="scene",
+                        detail=f"Visual greeting configuration unavailable ({type(exc).__name__}); retaining agent greeting",
+                    )
+                )
+            if not visual_opening:
+                self.emit(
+                    ConversationEvent(
+                        kind="scene",
+                        detail="Visual greeting disabled: enable First message overrides or clear the agent First message; voice continues",
+                    )
+                )
+        if stop.is_set():
+            return
         async with connect(signed.signed_url, open_timeout=10, max_size=16 * 1024 * 1024) as ws:
             # Always supply a fallback so an agent prompt using {{visual_context}}
             # still works when analysis is disabled, unavailable or timed out.
@@ -217,12 +242,13 @@ class ElevenLabsClient:
                     "Do not invent details if no image is available."
                 },
             }
-            if self.settings.vision_context_enabled and self.settings.vision_greeting_enabled:
+            if visual_opening:
                 from malachi.vision.scene_context import OPENING_STYLES
 
                 self.greeting_pending = True
                 self.opening_style = self.opening_style or random.choice(OPENING_STYLES)
-                initiation["conversation_config_override"] = {"agent": {"first_message": ""}}
+                if override_first_message:
+                    initiation["conversation_config_override"] = {"agent": {"first_message": ""}}
             await ws.send(json.dumps(initiation))
             loop = asyncio.get_running_loop()
 

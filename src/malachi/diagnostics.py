@@ -10,6 +10,10 @@ def agent_summary(agent):
     prompt = getattr(getattr(config, "agent", None), "prompt", None)
     text = getattr(prompt, "prompt", "") or ""
     enabled = getattr(files, "enabled", None)
+    platform = getattr(agent, "platform_settings", None)
+    overrides = getattr(platform, "overrides", None)
+    override_config = getattr(overrides, "conversation_config_override", None)
+    agent_override = getattr(override_config, "agent", None)
     return {
         "file_input": "enabled"
         if enabled is True
@@ -18,6 +22,8 @@ def agent_summary(agent):
         else "not declared",
         "llm": getattr(prompt, "llm", None) or "not declared",
         "legacy_visual_variable": "{{visual_context}}" in text,
+        "first_message_empty": getattr(getattr(config, "agent", None), "first_message", None) == "",
+        "first_message_override_allowed": getattr(agent_override, "first_message", None) is True,
     }
 
 
@@ -59,6 +65,8 @@ def main():
         return 1
     print("Agent file input:", summary["file_input"])
     print("Agent LLM:", summary["llm"])
+    print("Agent first message empty:", summary["first_message_empty"])
+    print("First-message override allowed:", summary["first_message_override_allowed"])
     print("Prompt uses legacy visual_context variable:", summary["legacy_visual_variable"])
     print(
         "This checks configuration only; it does not prove image delivery or model interpretation."

@@ -8,10 +8,17 @@ from malachi.conversation.audio_output import PlaybackBuffer
 from malachi.conversation.elevenlabs_client import ElevenLabsClient
 
 
-def run_adapter(monkeypatch, settings, messages):
+def run_adapter(monkeypatch, settings, messages, greeting_config=None):
     import elevenlabs.client
+    import malachi.diagnostics
     import websockets.asyncio.client
 
+    monkeypatch.setattr(
+        malachi.diagnostics,
+        "check_agent",
+        lambda settings: greeting_config
+        or {"first_message_override_allowed": True, "first_message_empty": False},
+    )
     stop = threading.Event()
     sent = []
     events = []
@@ -191,3 +198,19 @@ def test_image_greeting_suppresses_configured_first_message(monkeypatch, setting
     settings.vision_greeting_enabled = True
     _, _, sent = run_adapter(monkeypatch, settings, [metadata()])
     assert sent[0]["conversation_config_override"] == {"agent": {"first_message": ""}}
+
+
+@pytest.mark.parametrize("empty", [False, True])
+def test_no_unpermitted_override_is_sent(monkeypatch, settings, empty):
+    settings.vision_context_enabled = True
+    settings.vision_greeting_enabled = True
+    _, events, sent = run_adapter(
+        monkeypatch,
+        settings,
+        [metadata()],
+        greeting_config={"first_message_override_allowed": False, "first_message_empty": empty},
+    )
+    assert "conversation_config_override" not in sent[0]
+    assert any(event.kind == "connected" for event in events)
+    if not empty:
+        assert any("Visual greeting disabled" in event.detail for event in events)

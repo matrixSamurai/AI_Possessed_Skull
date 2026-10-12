@@ -228,8 +228,11 @@ does not establish that file limits or image input caused it.
 In the ElevenLabs agent Security / client override settings, enable **First message**
 overrides and save before launching. The client sends an empty first-message override
 so the static greeting does not play before the image arrives. If this permission is
-not enabled, ElevenLabs may reject session initiation; use
-`VISION_GREETING_ENABLED=false` to retain the configured greeting until configured.
+not enabled, the app retains the configured greeting rather than sending a disallowed
+override. Clearing the agent First message also enables visual greetings without
+an override. If reading agent configuration fails, the app conservatively retains
+the configured greeting. `VISION_GREETING_ENABLED=false` explicitly disables visual
+greetings.
 
 The first photo requests a 10–25 word greeting using a visible clothing, glasses,
 room or people-count detail. Six opening styles shuffle across interactions without
@@ -239,3 +242,15 @@ short delay. Microphone input is temporarily silenced while preparing the openin
 then normal speaker echo protection resumes. A missing/rejected/timed-out image
 requests a varied nonvisual greeting without invented observations. Stop/cancellation
 does not send a fallback greeting. No separate vision provider or API key is used.
+
+### Immediate WebSocket close 1008
+
+1008 is a server policy rejection, not a face-absence timeout. Visual greeting setup
+now reads the agent configuration before connecting and sends an empty first-message
+override only when `platform_settings.overrides.conversation_config_override.agent.
+first_message` permits it. An already-empty configured first message needs no override.
+If neither is available, camera context and the normal voice greeting continue.
+The diagnostics command reports these two settings. Socket policy diagnostics expose
+only a recognized category, not arbitrary close-reason text. Other server policies
+can also produce 1008; consult the new log and ElevenLabs conversation diagnostics
+if it persists after this update.

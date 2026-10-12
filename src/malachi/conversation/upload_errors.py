@@ -42,6 +42,18 @@ def connection_error_hint(error, settings):
     code = getattr(received, "code", None)
     if isinstance(code, int):
         parts.append(f"WebSocket close {code}")
+        reason = getattr(received, "reason", "")
+        if code == 1008 and isinstance(reason, str):
+            # Only named categories are exposed, never arbitrary close-reason text.
+            reason = reason.lower()
+            if "override" in reason or "first_message" in reason or "first message" in reason:
+                parts.append("agent client override/first-message policy rejected")
+            elif "quota" in reason or "limit" in reason:
+                parts.append("service quota/limit policy rejected")
+            elif "file" in reason or "image" in reason:
+                parts.append("service image/file policy rejected")
+            else:
+                parts.append("service policy rejected; inspect ElevenLabs conversation diagnostics")
     hint = upload_error_hint(error, settings)
     if hint:
         parts.append(hint)

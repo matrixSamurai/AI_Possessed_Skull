@@ -64,3 +64,16 @@ def test_service_error_message_is_redacted(settings):
     )
     hint = connection_error_hint(error, settings)
     assert "File limit reached" in hint and "test-secret" not in hint
+
+
+def test_policy_close_classifies_override_without_exposing_reason(settings):
+    from malachi.conversation.upload_errors import connection_error_hint
+
+    class Closed(Exception):
+        rcvd = SimpleNamespace(
+            code=1008, reason="first_message override not allowed secret wss://private.invalid"
+        )
+
+    hint = connection_error_hint(Closed(), settings)
+    assert "first-message policy rejected" in hint
+    assert "secret" not in hint and "private.invalid" not in hint
