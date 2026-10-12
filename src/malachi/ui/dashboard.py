@@ -324,7 +324,7 @@ class Dashboard(QMainWindow):
             self.face_label.setText(
                 f"Target #{self.face.track_id}  •  ({self.face.center_x:.2f}, {self.face.center_y:.2f})"
                 f"  •  yaw {self.face.yaw:+.1f}° / pitch {self.face.pitch:+.1f}°\n"
-                f"{'Stable track' if self.face.stable else 'New track'}  •  detection threshold ≥0.5 (not a probability)"
+                f"{'Stable track' if self.face.stable else 'New track'}  •  detection threshold ≥{self.settings.face_min_detection_confidence:.2f} (not a probability)"
             )
         else:
             self.face_label.setText(error or "No visitor • local monitoring")

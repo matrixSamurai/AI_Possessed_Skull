@@ -211,3 +211,30 @@ The repository includes 12 owner-selected ElevenLabs effects in
 `AMBIENCE_DIRECTORY=assets/ambience_library`, and
 `AMBIENCE_FRESH_EFFECTS_ENABLED=false` to shuffle this collection without API calls.
 Fresh generation remains optional using `AMBIENCE_FRESH_EFFECTS_ENABLED=true`.
+
+## Improve distant-face detection
+
+The detector uses MediaPipe Face Landmarker. Camera capture now requests 1280×720;
+actual resolution depends on the camera. Confidence thresholds default to 0.4, and
+an additional IMAGE-mode detector scans one overlapping 60%-frame crop every 0.2
+seconds. Four rotating crops cover the image, making small faces larger in the
+model input. Full-frame detection continues, overlapping detections are merged,
+and crop observations expire after one scan cycle (about 0.9 seconds by default).
+This detects faces; it does not recognize identities.
+
+```dotenv
+CAMERA_WIDTH=1280
+CAMERA_HEIGHT=720
+FACE_MIN_DETECTION_CONFIDENCE=0.4
+FACE_MIN_PRESENCE_CONFIDENCE=0.4
+FACE_MIN_TRACKING_CONFIDENCE=0.4
+FACE_FAR_SCAN_ENABLED=true
+FACE_FAR_SCAN_INTERVAL_SECONDS=0.2
+```
+
+Restart after changing settings. For additional sensitivity, try 0.3 thresholds;
+lower values can increase false detections. The dashboard confidence label reflects
+a configured threshold, not a per-face probability. Crop scans add CPU work; disable
+FACE_FAR_SCAN_ENABLED or increase the interval on slower machines. Face pixel size,
+lighting and blur still limit detection; distance improvements need testing with
+your real camera. No additional model download or paid API is required.

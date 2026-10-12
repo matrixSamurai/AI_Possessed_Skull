@@ -76,7 +76,7 @@ class CameraService:
             if not self.demo:
                 from malachi.vision.face_detector import FaceDetector
 
-                detector = FaceDetector(self.settings.face_model_path)
+                detector = FaceDetector(self.settings.face_model_path, self.settings)
             while not self.stop_event.is_set():
                 started = time.monotonic()
                 if self.demo:
@@ -110,6 +110,8 @@ class CameraService:
                 else:
                     if cap is None:
                         cap = cv2.VideoCapture(self.settings.camera_index)
+                        cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.settings.camera_width)
+                        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.settings.camera_height)
                         cap.set(cv2.CAP_PROP_FPS, self.settings.camera_fps)
                     ok, frame = cap.read()
                     if not ok:
@@ -122,6 +124,7 @@ class CameraService:
                                 "Camera unavailable; retrying",
                             )
                         movement.reset()
+                        detector.reset_far_scan()
                         self.stop_event.wait(1)
                         continue
                     faces = detector.detect(frame, started)

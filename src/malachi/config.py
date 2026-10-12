@@ -13,6 +13,13 @@ class Settings(BaseSettings):
     conversation_backend: Literal["mock", "elevenlabs", "disabled"] = "mock"
     camera_index: int = Field(0, ge=0, le=20)
     camera_fps: int = Field(20, ge=5, le=60)
+    camera_width: int = Field(1280, ge=320, le=1920)
+    camera_height: int = Field(720, ge=240, le=1080)
+    face_min_detection_confidence: float = Field(0.4, ge=0.2, le=0.9)
+    face_min_presence_confidence: float = Field(0.4, ge=0.2, le=0.9)
+    face_min_tracking_confidence: float = Field(0.4, ge=0.2, le=0.9)
+    face_far_scan_enabled: bool = True
+    face_far_scan_interval_seconds: float = Field(0.2, ge=0.1, le=1)
     face_model_path: Path = Path("assets/face_landmarker.task")
     face_detection_hold_seconds: float = Field(0.3, gt=0)
     face_facing_hold_seconds: float = Field(2, gt=0)
