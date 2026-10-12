@@ -11,3 +11,11 @@ class EyeCommand(BaseModel):
     preset: Literal["calm", "inferno", "spectral", "storm", "hypnosis", "mischievous", "mirror"]
     intensity: float = Field(0.9, ge=0, le=1)
     duration_seconds: float = Field(8, ge=2, le=20)
+
+
+class LightingCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    color: Literal["red", "green", "blue", "violet", "amber", "white", "cyan", "off"]
+    brightness: float = Field(0.7, ge=0, le=1)
+    effect: Literal["steady", "breathing", "ember"] = "breathing"
+    duration_seconds: float = Field(8, ge=2, le=20)

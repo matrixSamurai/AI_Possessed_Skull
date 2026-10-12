@@ -1,0 +1,18 @@
+{
+  "type": "client",
+  "name": "set_underlighting",
+  "description": "Choose the under-skull lighting independently of the eye animation to match your ghostly performance. Choose red for anger, green or cyan for spectral secrets, blue or violet for suspense, amber for ancient tales, white for a pale haunting glow, or off for darkness. Change occasionally as the mood shifts, never announce technical tool names. Controls the desktop preview; physical LEDs are not connected yet.",
+  "expects_response": true,
+  "response_timeout_secs": 3,
+  "parameters": {
+    "type": "object",
+    "description": "Temporary independent under-skull lighting",
+    "properties": {
+      "color": {"type": "string", "description": "Light color", "enum": ["red", "green", "blue", "violet", "amber", "white", "cyan", "off"]},
+      "brightness": {"type": "number", "description": "Brightness from 0 to 1; normally 0.4-0.8; default 0.7"},
+      "effect": {"type": "string", "description": "Lighting pattern; default breathing", "enum": ["steady", "breathing", "ember"]},
+      "duration_seconds": {"type": "number", "description": "Duration from 2 to 20 seconds; default 8"}
+    },
+    "required": ["color"]
+  }
+}

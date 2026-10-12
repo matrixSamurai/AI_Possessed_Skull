@@ -27,5 +27,6 @@ class ConversationEvent(BaseModel):
         "summary",
         "scene",
         "eye_effect",
+        "lighting_effect",
     ]
     detail: str = ""

@@ -33,6 +33,7 @@ class ElevenLabsClient:
         self.response_pending_until = 0.0
         self.audio_overflow_reported = False
         self.last_eye_command = float("-inf")
+        self.last_lighting_command = float("-inf")
 
     async def _deliver_snapshot(self, ws, conversation_id, stop):
         from malachi.vision.scene_context import ElevenLabsImageUploader, PHOTO_INSTRUCTIONS
@@ -360,7 +361,7 @@ class ElevenLabsClient:
                             ConversationEvent(kind="summary", detail="Agent response received")
                         )
                     elif kind == "client_tool_call":
-                        from malachi.ui.eye_commands import EyeCommand
+                        from malachi.ui.eye_commands import EyeCommand, LightingCommand
 
                         call = message.get("client_tool_call", {})
                         result = {
@@ -369,24 +370,31 @@ class ElevenLabsClient:
                             "is_error": False,
                         }
                         try:
-                            if call.get("tool_name") != "set_eye_effect":
+                            name = call.get("tool_name")
+                            if name == "set_eye_effect":
+                                if loop.time() - self.last_eye_command < 1:
+                                    raise ValueError("Too many eye changes")
+                                command = EyeCommand.model_validate(call.get("parameters", {}))
+                                kind, label = "eye_effect", command.preset
+                                self.last_eye_command = loop.time()
+                            elif name == "set_underlighting":
+                                if loop.time() - self.last_lighting_command < 1:
+                                    raise ValueError("Too many lighting changes")
+                                command = LightingCommand.model_validate(call.get("parameters", {}))
+                                kind, label = "lighting_effect", command.color
+                                self.last_lighting_command = loop.time()
+                            else:
                                 raise ValueError("Unknown tool")
-                            if loop.time() - self.last_eye_command < 1:
-                                raise ValueError("Too many eye changes")
-                            command = EyeCommand.model_validate(call.get("parameters", {}))
                             self.emit(
-                                ConversationEvent(
-                                    kind="eye_effect", detail=command.model_dump_json()
-                                )
+                                ConversationEvent(kind=kind, detail=command.model_dump_json())
                             )
-                            self.last_eye_command = loop.time()
                             result["result"] = (
-                                f"Queued {command.preset} eyes for {command.duration_seconds:g} seconds"
+                                f"Queued {kind}: {label} for {command.duration_seconds:g} seconds"
                             )
                         except Exception:
                             result["is_error"] = True
                             result["result"] = (
-                                "Unsupported tool or invalid eye effect; use a listed preset, intensity 0-1, duration 2-20 seconds, at most one change per second."
+                                "Unsupported tool or invalid parameters; use listed preset/color/effect values, intensity/brightness 0-1, duration 2-20 seconds, at most one change per tool per second."
                             )
                         await ws.send(json.dumps(result))
                     elif kind == "error":

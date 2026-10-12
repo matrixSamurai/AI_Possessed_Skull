@@ -261,3 +261,31 @@ def test_agent_eye_tool_is_acknowledged_without_interrupting_audio(monkeypatch, 
     assert results["valid"]["is_error"] is False and results["invalid"]["is_error"] is True
     assert buffer.samples == 320
     assert {"type": "pong", "event_id": 18} in sent
+
+
+def test_eye_and_light_tools_can_be_chosen_independently(monkeypatch, settings):
+    calls = [
+        {
+            "type": "client_tool_call",
+            "client_tool_call": {
+                "tool_call_id": "eyes",
+                "tool_name": "set_eye_effect",
+                "parameters": {"preset": "spectral"},
+            },
+        },
+        {
+            "type": "client_tool_call",
+            "client_tool_call": {
+                "tool_call_id": "light",
+                "tool_name": "set_underlighting",
+                "parameters": {"color": "red", "effect": "ember", "brightness": 0.8},
+            },
+        },
+    ]
+    _, events, sent = run_adapter(monkeypatch, settings, [metadata(), *calls])
+    assert any(e.kind == "eye_effect" for e in events)
+    assert any(
+        e.kind == "lighting_effect" and json.loads(e.detail)["color"] == "red" for e in events
+    )
+    results = [s for s in sent if s.get("type") == "client_tool_result"]
+    assert len(results) == 2 and not any(r["is_error"] for r in results)

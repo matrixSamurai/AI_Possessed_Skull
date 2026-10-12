@@ -259,3 +259,9 @@ The desktop skull also has synchronized underlighting: a diffused LED-strip prev
 floor glow and upward haze that follow the eye animation. Emergency stop extinguishes
 it. Its separate RGB/brightness/effect state can later drive physical LEDs beneath
 the skull. See [under-skull lighting](docs/under-skull-lighting.md).
+
+The separate `set_underlighting` client tool lets the agent choose red, green, blue,
+violet, amber, white, cyan or off independently of the eyes, with brightness,
+steady/breathing/ember patterns and temporary duration. Register its
+[tool definition](docs/tools/set_underlighting.json) in ElevenLabs; the
+[lighting guide](docs/under-skull-lighting.md) includes field values and prompt text.

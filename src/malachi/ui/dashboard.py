@@ -253,9 +253,25 @@ class Dashboard(QMainWindow):
                 from malachi.ui.eye_commands import EyeCommand
 
                 self.skull.effects.choose(EyeCommand.model_validate_json(event.detail), now)
+            if (
+                event.kind == "lighting_effect"
+                and self.machine.state == State.CONVERSING
+                and not self.machine.emergency
+            ):
+                from malachi.ui.eye_commands import LightingCommand
+
+                self.skull.underlight.choose(LightingCommand.model_validate_json(event.detail), now)
             self.manager.mark(event, now)
             self.machine.event(event, now)
-            if event.kind in ("summary", "error", "closed", "connected", "scene", "eye_effect"):
+            if event.kind in (
+                "summary",
+                "error",
+                "closed",
+                "connected",
+                "scene",
+                "eye_effect",
+                "lighting_effect",
+            ):
                 self.log.appendPlainText(f"{event.kind}: {event.detail}")
         self.machine.tick(self.face, now, people_present=bool(faces))
         state = self.machine.state
@@ -327,6 +343,8 @@ class Dashboard(QMainWindow):
             self.manager.audio.agent_speaking,
             self.machine.emergency,
         )
+        if state in (State.IDLE, State.ENDING, State.COOLDOWN):
+            self.skull.underlight.clear_override()
         self.skull.underlight.update(
             self.skull.effects.preset,
             self.skull.effects.accent,
