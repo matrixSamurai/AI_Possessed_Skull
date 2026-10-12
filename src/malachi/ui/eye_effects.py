@@ -11,7 +11,7 @@ class EyeEffects:
         self.preset = "calm"
         self.command = None
         self.command_until = 0.0
-        self.accent = [100.0, 220.0, 210.0]
+        self.accent = [85.0, 104.0, 96.0]
 
     def choose(self, command, now):
         self.command = command
@@ -45,20 +45,20 @@ class EyeEffects:
                 self.preset = (
                     "spectral"
                     if speaking
-                    else ("hypnosis", "mischievous", "storm", "mirror")[int(self.phase / 12) % 4]
+                    else ("hypnosis", "storm", "mirror")[int(self.phase / 14) % 3]
                 )
             else:
                 self.preset = "inferno" if state in ("AWAKENING", "STALKING") else "calm"
         if emergency:
             self.preset = "calm"
         colors = {
-            "calm": (90, 210, 195),
-            "inferno": (255, 40, 12),
-            "spectral": (90, 250, 215),
-            "storm": (170, 140, 255),
-            "hypnosis": (240, 90, 220),
-            "mischievous": (255, 190, 60),
-            "mirror": (160, 200, 250),
+            "calm": (85, 104, 96),
+            "inferno": (190, 22, 12),
+            "spectral": (112, 145, 132),
+            "storm": (96, 108, 139),
+            "hypnosis": (112, 43, 51),
+            "mischievous": (144, 47, 24),
+            "mirror": (103, 121, 125),
         }
         alpha = 1 - math.exp(-dt / 0.8)
         for i, channel in enumerate(colors[self.preset]):

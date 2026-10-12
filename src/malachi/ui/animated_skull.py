@@ -29,15 +29,43 @@ class AnimatedSkull(QWidget):
         glow.setColorAt(1, QColor("#101017"))
         p.setBrush(glow)
         p.drawEllipse(QRectF(-210, -210, 420, 420))
-        p.setBrush(QColor("#b0aaa4"))
-        p.drawRoundedRect(QRectF(-145, -170, 290, 255), 110, 100)
-        p.setBrush(QColor("#24202b"))
+        bone = QRadialGradient(-48, -105, 270)
+        bone.setColorAt(0, QColor("#c0b7a2"))
+        bone.setColorAt(0.5, QColor("#928777"))
+        bone.setColorAt(1, QColor("#3b3634"))
+        p.setBrush(bone)
+        skull = QPainterPath(QPointF(0, -174))
+        skull.cubicTo(-132, -183, -160, -109, -144, -34)
+        skull.lineTo(-124, 4)
+        skull.lineTo(-94, 21)
+        skull.lineTo(-81, 76)
+        skull.lineTo(81, 76)
+        skull.lineTo(94, 21)
+        skull.lineTo(124, 4)
+        skull.lineTo(144, -34)
+        skull.cubicTo(160, -109, 132, -183, 0, -174)
+        skull.closeSubpath()
+        p.drawPath(skull)
+        p.setPen(QPen(QColor("#554e46"), 1.1))
+        crack = QPainterPath(QPointF(-8, -165))
+        for point in [(-13, -146), (-5, -137), (-12, -124), (-9, -113)]:
+            crack.lineTo(*point)
+        p.drawPath(crack)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#100e12"))
         p.drawEllipse(QRectF(-126, -98, 112, 102))
         p.drawEllipse(QRectF(14, -98, 112, 102))
         for x in (-70, 70):
             self._paint_eye(p, x)
         p.setBrush(QColor("#26202a"))
-        p.drawEllipse(QRectF(-18, 0, 36, 39))
+        nose = QPainterPath(QPointF(0, -8))
+        nose.lineTo(-16, 30)
+        nose.lineTo(-3, 25)
+        nose.lineTo(0, 32)
+        nose.lineTo(3, 25)
+        nose.lineTo(16, 30)
+        nose.closeSubpath()
+        p.drawPath(nose)
         opening = self.motion.jaw * 58
         p.drawRoundedRect(QRectF(-78, 62, 156, 20 + opening), 10, 10)
         p.setBrush(QColor("#cbc1b6"))
@@ -110,13 +138,13 @@ class AnimatedSkull(QWidget):
 
     def _paint_eye(self, p, x):
         energy, phase = self.effects.intensity, self.effects.phase
-        fury = energy if self.effects.preset == "inferno" else energy * 0.25
+        fury = energy if self.effects.preset == "inferno" else 0.2 + energy * 0.5
         accent = QColor(*(round(c) for c in self.effects.accent))
         rect = QRectF(x - 42, -85, 84, 74)
         breathing = 0.92 + 0.08 * math.sin(phase * 1.5)
         halo = QRadialGradient(x, -48, 68)
         halo.setColorAt(
-            0, QColor(accent.red(), accent.green(), accent.blue(), round(130 * energy * breathing))
+            0, QColor(accent.red(), accent.green(), accent.blue(), round(70 * energy * breathing))
         )
         halo.setColorAt(1, QColor(160, 0, 30, 0))
         p.setPen(Qt.PenStyle.NoPen)
@@ -124,17 +152,20 @@ class AnimatedSkull(QWidget):
         p.drawEllipse(QRectF(x - 68, -116, 136, 136))
         p.save()
         clip = QPainterPath()
-        clip.addEllipse(rect)
+        clip.moveTo(x - 43, -49)
+        clip.cubicTo(x - 28, -83, x + 15, -85, x + 43, -49)
+        clip.cubicTo(x + 24, -13, x - 20, -17, x - 43, -49)
+        clip.closeSubpath()
         p.setClipPath(clip)
         sclera = QRadialGradient(x - 9, -62, 62)
-        sclera.setColorAt(0, self._blend("#faf3df", "#f4b3a8", fury * 0.65))
-        sclera.setColorAt(1, self._blend("#a9aaa6", "#a84451", fury * 0.7))
+        sclera.setColorAt(0, self._blend("#c4bda6", "#b37a70", fury * 0.7))
+        sclera.setColorAt(1, self._blend("#393d38", "#492126", fury * 0.8))
         p.setBrush(sclera)
         p.drawEllipse(rect)
         p.save()
         p.translate(x, -48)
         for i, (path, branch) in enumerate(self.veins):
-            reveal = max(0, min(1, (fury - i * 0.025) * 1.5))
+            reveal = max(0, min(1, (0.15 + fury - i * 0.025) * 1.5))
             p.setPen(QPen(QColor(140, 12, 38, round(190 * reveal)), 0.7 + fury * 0.7))
             p.drawPath(path)
             p.setPen(QPen(QColor(170, 20, 42, round(130 * reveal)), 0.65))
@@ -142,13 +173,13 @@ class AnimatedSkull(QWidget):
         p.restore()
         px, py = x + self.motion.x * 23, -48 + self.motion.y * 18
         iris = QRadialGradient(px - 4, py - 5, 26)
-        iris.setColorAt(0, self._blend("#e0ffe9", accent.name(), energy))
-        iris.setColorAt(0.55, self._blend("#277a80", accent.darker(135).name(), energy))
-        iris.setColorAt(1, self._blend("#102e42", "#390514", fury))
+        iris.setColorAt(0, self._blend("#78847b", accent.name(), 0.6 + energy * 0.4))
+        iris.setColorAt(0.55, accent.darker(180))
+        iris.setColorAt(1, QColor("#090b0c"))
         p.setPen(QPen(QColor("#17121e"), 1.5))
         p.setBrush(iris)
         p.drawEllipse(QRectF(px - 23, py - 23, 46, 46))
-        p.setPen(QPen(QColor(255, 185, 120, round(25 + 60 * fury)), 0.6))
+        p.setPen(QPen(QColor(176, 136, 114, round(15 + 40 * fury)), 0.6))
         for i in range(32):
             angle = i * math.tau / 32 + phase * 0.025
             p.drawLine(
@@ -156,24 +187,24 @@ class AnimatedSkull(QWidget):
                 QPointF(px + math.cos(angle) * 21, py + math.sin(angle) * 21),
             )
         self._paint_preset(p, px, py, accent, phase, energy)
-        pupil = 8.5 - 4 * fury + math.sin(phase * 1.2) * 0.4
+        pupil = 6.5 - 3.5 * fury + math.sin(phase * 0.8) * 0.3
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor("#07060b"))
         if self.effects.preset == "mischievous":
-            star = QPainterPath()
-            for i in range(10):
-                angle = i * math.pi / 5 - math.pi / 2 + phase * 0.15
-                radius = 13 if i % 2 == 0 else 5
-                point = QPointF(px + math.cos(angle) * radius, py + math.sin(angle) * radius)
-                star.moveTo(point) if i == 0 else star.lineTo(point)
-            star.closeSubpath()
-            p.drawPath(star)
-        elif self.effects.preset != "mirror":
-            p.drawEllipse(QRectF(px - pupil, py - 14, pupil * 2, 28))
-        p.setBrush(QColor(255, 246, 221, 225))
-        p.drawEllipse(QRectF(px - 8, py - 13, 5, 5))
-        p.setBrush(QColor(255, 246, 221, 85))
-        p.drawEllipse(QRectF(px + 9, py + 8, 3, 3))
+            # A crooked, predatory slit instead of a cartoon star.
+            slit = QPainterPath(QPointF(px - 3, py - 20))
+            slit.cubicTo(px + 7, py - 5, px - 8, py + 8, px + 2, py + 20)
+            slit.cubicTo(px - 10, py + 5, px + 1, py - 9, px - 3, py - 20)
+            p.drawPath(slit)
+        else:
+            p.drawEllipse(QRectF(px - pupil, py - 19, pupil * 2, 38))
+        p.setBrush(QColor(219, 220, 199, 105))
+        p.drawEllipse(QRectF(px - 7, py - 12, 2.5, 2.5))
+        shadow = QRadialGradient(x, -48, 43)
+        shadow.setColorAt(0.45, QColor(0, 0, 0, 0))
+        shadow.setColorAt(1, QColor(3, 2, 5, 195))
+        p.setBrush(shadow)
+        p.drawEllipse(rect)
         # Inward-slanting lids build a theatrical angry stare.
         lid = QPainterPath(QPointF(x - 46, -89))
         lid.lineTo(x + 46, -89)
@@ -184,7 +215,7 @@ class AnimatedSkull(QWidget):
             lid.lineTo(x + 46, -84 + 6 * fury)
             lid.lineTo(x - 46, -84 + 27 * fury)
         lid.closeSubpath()
-        p.setBrush(QColor("#9c9691"))
+        p.setBrush(QColor("#4c4440"))
         p.drawPath(lid)
         if self.blink:
             p.drawEllipse(rect)
@@ -198,7 +229,7 @@ class AnimatedSkull(QWidget):
             iris_clip = QPainterPath()
             iris_clip.addEllipse(QRectF(px - 22, py - 22, 44, 44))
             p.setClipPath(iris_clip, Qt.ClipOperation.IntersectClip)
-            p.setOpacity(0.8)
+            p.setOpacity(0.48)
             p.drawImage(QRectF(px - 37, py - 22, 74, 44), self.reflection)
         elif preset == "inferno":
             for i in range(9):
@@ -211,27 +242,24 @@ class AnimatedSkull(QWidget):
                 flame.cubicTo(x + 9, py - height / 2, x + 7, py + 7, x + 4, py + 16)
                 flame.closeSubpath()
                 p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(QColor(255, 65 + i * 12, 10, round(100 * fury)))
+                p.setBrush(QColor(218, 18 + i * 6, 5, round(75 * fury)))
                 p.drawPath(flame)
-        elif preset in ("spectral", "hypnosis"):
-            for j in range(3):
-                path = QPainterPath()
-                for i in range(100):
-                    angle = (
-                        i * 0.12
-                        + phase * (0.3 if preset == "hypnosis" else -0.2)
-                        + j * math.tau / 3
-                    )
-                    radius = 2 + i * 0.2
-                    point = QPointF(px + math.cos(angle) * radius, py + math.sin(angle) * radius)
-                    path.moveTo(point) if i == 0 else path.lineTo(point)
-                p.setPen(
-                    QPen(
-                        QColor(accent.red(), accent.green(), accent.blue(), 130),
-                        1.2 if preset == "hypnosis" else 2.2,
-                    )
-                )
-                p.drawPath(path)
+        elif preset == "spectral":
+            for j in range(4):
+                y = py - 15 + j * 9
+                drift = math.sin(phase * 0.6 + j) * 9
+                mist = QPainterPath(QPointF(px - 25, y))
+                mist.cubicTo(px - 10, y - drift, px + 10, y + drift, px + 25, y - 3)
+                p.setPen(QPen(QColor(174, 190, 179, 45), 3.5))
+                p.drawPath(mist)
+                p.setPen(QPen(QColor(200, 208, 192, 55), 0.7))
+                p.drawPath(mist)
+        elif preset == "hypnosis":
+            for j in range(4):
+                radius = 8 + j * 4 + math.sin(phase * 0.5 + j) * 1.5
+                p.setPen(QPen(QColor(140, 65, 75, 80), 0.8))
+                p.setBrush(Qt.BrushStyle.NoBrush)
+                p.drawEllipse(QRectF(px - radius, py - radius, radius * 2, radius * 2))
         elif preset == "storm":
             for j in range(3):
                 path = QPainterPath(QPointF(px - 23, py - 14 + j * 13))
@@ -239,6 +267,6 @@ class AnimatedSkull(QWidget):
                     path.lineTo(
                         px - 23 + i * 6, py - 14 + j * 13 + math.sin(i * 3 + phase * 1.5 + j) * 6
                     )
-                p.setPen(QPen(QColor(225, 215, 255, 150), 1.3))
+                p.setPen(QPen(QColor(155, 170, 196, 85), 0.8))
                 p.drawPath(path)
         p.restore()

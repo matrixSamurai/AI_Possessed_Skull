@@ -1,7 +1,7 @@
 {
   "type": "client",
   "name": "set_eye_effect",
-  "description": "Change MALACHI's desktop eye animation to match your conversational performance. Choose inferno for theatrical anger, spectral for ghostly speech, storm for dramatic suspense, hypnosis for mystical storytelling, mischievous for jokes, mirror to reflect the local visitor camera, or calm to settle. Changes are temporary. Call naturally when the mood changes, not on every sentence. Never announce technical tool names to visitors.",
+  "description": "Change MALACHI's desktop eye animation to match your conversational performance. Choose inferno for theatrical anger, spectral for ghostly speech, storm for dramatic suspense, hypnosis for mystical storytelling, mischievous for sinister teasing, mirror to reflect the local visitor camera, or calm to settle. Changes are temporary. Call naturally when the mood changes, not on every sentence. Never announce technical tool names to visitors.",
   "expects_response": true,
   "response_timeout_secs": 3,
   "parameters": {
