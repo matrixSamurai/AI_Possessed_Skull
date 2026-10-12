@@ -5,7 +5,7 @@ from malachi.events import ConversationEvent
 def awaken(machine, face):
     machine.tick(face, 0)
     machine.tick(face, 0.3)
-    machine.tick(face, 3.3)
+    machine.tick(face, 0.3 + machine.settings.face_facing_hold_seconds)
 
 
 def test_detection_and_facing_hold(settings, face):
@@ -15,9 +15,9 @@ def test_detection_and_facing_hold(settings, face):
     assert m.state == State.IDLE
     m.tick(face, 0.3)
     assert m.state == State.STALKING
-    m.tick(face, 3.299)
+    m.tick(face, 2.299)
     assert m.state == State.STALKING
-    m.tick(face, 3.3)
+    m.tick(face, 2.3)
     assert m.state == State.AWAKENING
     m.event(ConversationEvent(kind="connected"), 3.4)
     assert m.state == State.CONVERSING
@@ -173,3 +173,14 @@ def test_custom_absence_timeout_is_respected(settings, face):
     assert m.state == State.CONVERSING
     m.tick(None, 32)
     assert m.state == State.ENDING and m.reason == "visitor absent"
+
+
+def test_three_second_override_remains_supported(settings, face):
+    settings.face_facing_hold_seconds = 3
+    m = StateMachine(settings)
+    m.tick(face, 0)
+    m.tick(face, 0.3)
+    m.tick(face, 2.3)
+    assert m.state == State.STALKING
+    m.tick(face, 3.3)
+    assert m.state == State.AWAKENING

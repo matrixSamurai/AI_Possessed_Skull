@@ -161,3 +161,13 @@ it does not claim to retrieve an exact saved effect by name. No voice ID is requ
 **103 tests passed**, including official SDK sound-effect request serialization,
 variation cache separation, cached reuse and pre-request parameter validation.
 No live sound-effect generation or audible Mac playback was performed in the cloud.
+
+## Two-second activation and effect rotation
+
+Changed the default facing hold to 2 seconds; the initial 300 ms detection hold and
+network connection time remain separate. Existing .env overrides are preserved, so
+set FACE_FACING_HOLD_SECONDS=2.0 locally to apply the shorter countdown. Background
+shuffle now retains unused variations between bursts, using the whole bank before
+repeating and avoiding consecutive identical clips. Effects remain cached, not newly
+API-generated for each interaction. **105 tests passed**, including the new boundary,
+retained 3-second override and cross-burst shuffle behavior.

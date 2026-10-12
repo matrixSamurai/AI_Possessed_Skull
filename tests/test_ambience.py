@@ -236,3 +236,14 @@ def test_background_handover_keeps_acoustic_tail_guard(enabled):
     before = time.monotonic()
     service._callback(data, 320, SimpleNamespace(outputBufferDacTime=1.1, currentTime=1), False)
     assert data.any() and service.last_audible_until >= before + 0.419
+
+
+def test_each_new_burst_uses_remaining_variations_before_repeating(enabled):
+    e = AmbienceEngine(enabled, [np.ones(500) for _ in range(3)], seed=3)
+    choices = []
+    for _ in range(6):
+        e._choose()
+        choices.append(e.last_clip)
+        e.stop()
+    assert len(set(choices[:3])) == 3 and len(set(choices[3:])) == 3
+    assert all(a != b for a, b in zip(choices, choices[1:]))

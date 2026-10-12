@@ -74,7 +74,7 @@ AMBIENCE_DURING_CONVERSATION=false
 - Sustained face presence or scene motion for 300 ms triggers a 25-second playback
   window. AMBIENCE_DURATION_SECONDS accepts 20–30 seconds.
 - Clips play in shuffled order with short randomized gaps; each clip is used before
-  the shuffle bag repeats. Immediate repeats across bag boundaries are avoided when
+  the shuffle bag repeats, including across new playback windows. Immediate repeats across bag boundaries are avoided when
   there are multiple clips.
 - Clip endpoints and burst boundaries fade; background volume is separate from voice.
 - Continuous detection does not extend a burst or immediately retrigger it. Three

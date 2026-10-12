@@ -4,7 +4,7 @@
 |---|---|---|
 | IDLE | Local camera only; eyes rest downward | One target detected for 300 ms |
 | WATCHING | Shared eyes follow target, no remote audio | Facing qualifies or visitor disappears |
-| STALKING | Facing timer; yaw ≤25°, pitch ≤20° relative to calibration | 3 s facing → AWAKENING; looking away → WATCHING |
+| STALKING | Facing timer; yaw ≤25°, pitch ≤20° relative to calibration | 2 s facing → AWAKENING; looking away → WATCHING |
 | AWAKENING | Exactly one authorized conversation worker | Metadata + audio ready → CONVERSING; failure/timeout → ENDING |
 | CONVERSING | Microphone streaming, playback jaw envelope, independent eyes | idle, absence, goodbye, maximum, manual end, error |
 | ENDING | Stop audio and connection, clear jaw, neutral motion | Worker reports closed → COOLDOWN |
@@ -25,7 +25,7 @@ hard maximum still bounds it. Continuous absence of any visible face for 20 seco
 VISITOR_ABSENCE_TIMEOUT_SECONDS) ends a session, even during speech. Camera
 stopped/unavailable counts as absence. Returning faces reset the full countdown,
 including when movement/occlusion gives them a different temporary track ID.
-Yaw/pitch and the 3-second facing hold apply only to initial activation, not to
+Yaw/pitch and the 2-second facing hold apply only to initial activation, not to
 keeping an already active conversation alive. Another visitor occupying the zone
 also resets the timer; geometric tracks cannot establish personal identity.
 

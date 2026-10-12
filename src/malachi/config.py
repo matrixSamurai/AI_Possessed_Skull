@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     camera_fps: int = Field(20, ge=5, le=60)
     face_model_path: Path = Path("assets/face_landmarker.task")
     face_detection_hold_seconds: float = Field(0.3, gt=0)
-    face_facing_hold_seconds: float = Field(3, gt=0)
+    face_facing_hold_seconds: float = Field(2, gt=0)
     face_dropout_seconds: float = Field(0.25, ge=0, le=1)
     face_yaw_threshold: float = Field(25, gt=0, le=90)
     face_pitch_threshold: float = Field(20, gt=0, le=90)

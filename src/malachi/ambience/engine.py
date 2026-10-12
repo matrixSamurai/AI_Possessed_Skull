@@ -65,7 +65,8 @@ class AmbienceEngine:
             self.active = False
             self.current = None
             self.position = self.gap_samples = 0
-            self.bag.clear()
+            # Retain the unused shuffled clips across bursts: use the whole bank
+            # before repeating, even when conversations interrupt each burst.
 
     def update(self, present, moving, conversation, guard_enabled, stopped, muted, now):
         with self.lock:
