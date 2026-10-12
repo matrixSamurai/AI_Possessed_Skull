@@ -214,3 +214,18 @@ def test_no_unpermitted_override_is_sent(monkeypatch, settings, empty):
     assert any(event.kind == "connected" for event in events)
     if not empty:
         assert any("Visual greeting disabled" in event.detail for event in events)
+
+
+def test_audio_backlog_does_not_close_connection_and_ping_continues(monkeypatch, settings):
+    packet = audio(1)
+    packet["audio_event"]["audio_base_64"] = base64.b64encode(b"\x01\x02" * 16000 * 31).decode()
+    buffer, events, sent = run_adapter(
+        monkeypatch,
+        settings,
+        [metadata(), packet, {"type": "ping", "ping_event": {"event_id": 44}}],
+    )
+    assert buffer.samples == 16000 * 30
+    assert buffer.stats()["dropped_samples"] == 16000
+    assert any("Speech backlog limit reached" in event.detail for event in events)
+    assert not any(event.kind == "error" for event in events)
+    assert {"type": "pong", "event_id": 44} in sent

@@ -171,3 +171,20 @@ shuffle now retains unused variations between bursts, using the whole bank befor
 repeating and avoiding consecutive identical clips. Effects remain cached, not newly
 API-generated for each interaction. **105 tests passed**, including the new boundary,
 retained 3-second override and cross-burst shuffle behavior.
+
+## Speech backlog and image scheduling recovery
+
+Validated 127 passing tests, Ruff lint/format checks, and an offscreen five-second
+`python -m malachi.main --demo --smoke-seconds 5` run that reached CONVERSING and
+exited successfully. Cloud Qt/font-cache notices did not prevent startup or shutdown.
+
+The local 15-second speech queue's fatal BufferError is replaced by a bounded
+30-second default queue with counted excess-sample drops. Overload pauses image
+updates for the current session while keeping voice and ping handling alive. Tests
+cover retained queue capacity, resuming enqueue after consumption, overload with ping,
+pending-model response coordination, and delayed uploads without immediate catch-up.
+Image attempts now wait a full configured interval after completion. Sender shutdown
+suppresses secondary transmission failures only when stopping; actual network failures
+still emit an error. Timed-out sends cancel their queued future. Fresh-effect workers
+are stopped during service cleanup. No live ElevenLabs call or Mac camera/audio test
+was made in cloud; runtime provider and device behavior require local verification.

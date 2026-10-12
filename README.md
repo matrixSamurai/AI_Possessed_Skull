@@ -90,7 +90,7 @@ VISION_CONTEXT_INTERVAL_SECONDS=6
 
 Enable **file input / image uploads** on your ElevenLabs agent and choose an
 image-capable backend LLM through ElevenLabs. At interaction start, MALACHI captures
-a fresh webcam frame, connects voice, then repeats snapshots about every 6 seconds.
+a fresh webcam frame, connects voice, then waits at least 6 seconds between snapshot delivery attempts.
 Each frame is uploaded to the same conversation and delivered at a speech pause.
 The model is instructed to compare people counts and scene changes and use the
 latest image as context. The first image requests a varied, visually grounded opening. Enable **First message**

@@ -116,3 +116,38 @@ def test_device_underruns_are_counted_and_not_flooded(settings):
         duplex._output(np.zeros((320, 1)), 320, timing, status)
     assert duplex.output_underruns == 10
     assert len([e for e in events if e.kind == "summary"]) == 1
+
+
+def test_stopping_sender_does_not_report_secondary_transmission_error(settings):
+    # Exercise both a full batch and the partial-tail flush path.
+    for count in (1600, 320):
+        events = []
+        duplex = AudioDuplex(PlaybackBuffer(settings), events.append, lambda *a: None)
+
+        def closed_socket(packet):
+            duplex.stop_event.set()
+            raise OSError("socket intentionally closed")
+
+        duplex.send = closed_socket
+        duplex.queue.put(pcm(count))
+        worker = threading.Thread(target=duplex._sender)
+        worker.start()
+        worker.join(1)
+        assert not worker.is_alive()
+        assert not any(event.kind == "error" for event in events)
+
+
+def test_real_sender_failure_still_reports_error(settings):
+    events = []
+    duplex = AudioDuplex(PlaybackBuffer(settings), events.append, lambda *a: None)
+
+    def failed_socket(packet):
+        raise OSError("network unavailable")
+
+    duplex.send = failed_socket
+    duplex.queue.put(pcm(1600))
+    worker = threading.Thread(target=duplex._sender)
+    worker.start()
+    worker.join(1)
+    assert not worker.is_alive()
+    assert any(event.kind == "error" for event in events)

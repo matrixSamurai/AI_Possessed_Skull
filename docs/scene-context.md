@@ -123,8 +123,8 @@ upload/encoding/delivery failures produce a status without requesting session sh
 An unsupported backend may still reject the multimodal input at the service level;
 configure file support before enabling it.
 
-After the initial image, fresh snapshots are captured roughly every 6 seconds
-(configurable from 6 to 120 seconds). A single background task serializes captures,
+After the initial image, fresh snapshots are captured at least 6 seconds after the
+previous delivery attempt completes (configurable from 6 to 120 seconds). A single background task serializes captures,
 uploads and delivery; slow uploads or speech can delay updates, without a frame backlog.
 Each attachment asks the model to compare visible people counts and scene changes
 and use the latest observations in subsequent conversation. This is sampled vision,
@@ -254,3 +254,19 @@ The diagnostics command reports these two settings. Socket policy diagnostics ex
 only a recognized category, not arbitrary close-reason text. Other server policies
 can also produce 1008; consult the new log and ElevenLabs conversation diagnostics
 if it persists after this update.
+
+## Speech buffer overflow recovery
+
+The playback queue is now bounded to 30 seconds by default
+(`AUDIO_PLAYBACK_QUEUE_SECONDS`, range 15–60). A provider packet that exceeds remaining
+capacity preserves queued speech and accepts its fitting prefix; excess samples are
+counted and skipped rather than raising BufferError and closing the voice session.
+The client disables further image updates for that session and logs a warning on
+overflow; microphone and WebSocket ping handling continue. This is degraded recovery:
+audio may be shortened at the limit, not unlimited buffering or lossless playback.
+
+Image scheduling no longer catches up immediately after a delayed delivery. It waits
+a full configured interval before preparing the next snapshot, and also waits for a
+pending model response, queued speech and microphone activity before delivering it.
+This reduces overlapping image-triggered responses. If overflow recurs, inspect audio
+device health and agent response length; do not keep increasing the queue indefinitely.

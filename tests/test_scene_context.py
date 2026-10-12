@@ -277,7 +277,7 @@ def test_periodic_images_are_fresh_serial_and_stop_with_session(enabled):
     enabled = SimpleNamespace(**enabled.model_dump())
     enabled.vision_context_interval_seconds = 0.02
     stop = threading.Event()
-    frames, uploads, messages = [], [], []
+    frames, uploads, messages, delivery_times = [], [], [], []
 
     def provider():
         frames.append(len(frames))
@@ -286,12 +286,16 @@ def test_periodic_images_are_fresh_serial_and_stop_with_session(enabled):
     class Uploader:
         async def upload(self, conversation_id, jpeg):
             assert conversation_id == "same_session"
+            if not uploads:
+                await asyncio.sleep(0.05)  # Slow upload must not cause catch-up.
             uploads.append(jpeg)
             return f"file_{len(uploads)}"
 
     class Socket:
         async def send(self, data):
+            delivery_times.append(asyncio.get_running_loop().time())
             messages.append(json.loads(data))
+            client.response_pending_until = 0  # Simulate a completed provider response.
             if len(messages) == 3:
                 stop.set()
 
@@ -303,6 +307,8 @@ def test_periodic_images_are_fresh_serial_and_stop_with_session(enabled):
     assert uploads[0] == b"initial" and uploads[1] != uploads[2]
     assert len(messages) == 3 and client.snapshot is None
     assert all("supersedes older images" in m["text"]["text"] for m in messages)
+
+    assert all(b - a >= 0.02 for a, b in zip(delivery_times, delivery_times[1:]))
 
 
 def test_unsupported_model_disables_periodic_uploads(enabled):
@@ -347,6 +353,7 @@ def test_visual_opening_uses_image_only_once(enabled):
     assert "FIRST greeting" in socket.sent[0]["text"]["text"]
     assert "THIS attached image" in socket.sent[0]["text"]["text"]
     assert not client.greeting_pending and not client.audio.opening_pending
+    client.response_pending_until = 0  # The opening response has completed.
     client.snapshot = PreparedSnapshot(b"next jpeg")
     asyncio.run(client._deliver_snapshot(socket, "session", threading.Event()))
     assert "FIRST greeting" not in socket.sent[1]["text"]["text"]
@@ -370,3 +377,30 @@ def test_missing_image_requests_honest_fallback_opening(enabled):
     assert len(socket.sent) == 1 and socket.sent[0]["type"] == "user_message"
     assert "No usable image" in socket.sent[0]["text"]
     assert not client.greeting_pending and not client.audio.opening_pending
+
+
+def test_image_waits_for_model_response_not_just_audio_pause(enabled):
+    class Uploader:
+        async def upload(self, *args):
+            return "file_test"
+
+    class Socket:
+        sent = []
+
+        async def send(self, data):
+            self.sent.append(data)
+
+    client = make_client(enabled, Uploader())
+    client.snapshot = PreparedSnapshot(b"jpeg")
+    socket = Socket()
+
+    async def scenario():
+        client.response_pending_until = asyncio.get_running_loop().time() + 10
+        task = asyncio.create_task(client._deliver_snapshot(socket, "session", threading.Event()))
+        await asyncio.sleep(0.02)
+        assert not socket.sent
+        client.response_pending_until = 0
+        await asyncio.wait_for(task, 1)
+
+    asyncio.run(scenario())
+    assert len(socket.sent) == 1

@@ -17,6 +17,7 @@ class PlaybackBuffer:
         self.drained_at = None
         self.refills = 0
         self.interruptions = 0
+        self.dropped_samples = 0
         self.chunks = deque()
         self.samples = 0
         self.jaw = JawSync(settings.jaw_noise_gate, settings.jaw_gain)
@@ -27,12 +28,18 @@ class PlaybackBuffer:
     def push(self, audio):
         if len(audio) % 2:
             raise ValueError("PCM16 needs complete samples")
-        block = np.frombuffer(audio, dtype="<i2").astype(np.float32) / 32768
         with self.lock:
-            if self.samples + len(block) > 16000 * 15:
-                raise BufferError("speech buffer exceeds 15 seconds")
-            if not len(block):
-                return
+            capacity = max(
+                0, int(16000 * self.settings.audio_playback_queue_seconds) - self.samples
+            )
+            count = min(len(audio) // 2, capacity)
+            dropped = len(audio) // 2 - count
+            self.dropped_samples += dropped
+            if not count:
+                return dropped
+            # Preserve queued speech and the next samples; bound memory even for
+            # an oversized provider packet. Excess tail is dropped, never fatal.
+            block = np.frombuffer(audio, dtype="<i2", count=count).astype(np.float32) / 32768
             if self.wait_started is None and not self.playing:
                 now = self.clock()
                 self.wait_started = now
@@ -40,6 +47,7 @@ class PlaybackBuffer:
                     self.refills += 1
             self.chunks.append(block)
             self.samples += len(block)
+            return dropped
 
     def render(self, frames):
         with self.lock:
@@ -80,6 +88,7 @@ class PlaybackBuffer:
                 "buffer_ms": self.samples / 16,
                 "refills": self.refills,
                 "interruptions": self.interruptions,
+                "dropped_samples": self.dropped_samples,
             }
 
     def clear(self, interrupted=False):

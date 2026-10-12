@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     serial_baudrate: int = Field(115200, gt=0)
     debug_mode: bool = False
     audio_playback_buffer_ms: int = Field(120, ge=0, le=500)
+    audio_playback_queue_seconds: float = Field(30, ge=15, le=60)
     audio_playback_max_wait_ms: int = Field(250, ge=20, le=1000)
     audio_input_chunk_ms: int = Field(100, ge=20, le=250)
     audio_suppress_mic_during_playback: bool = True

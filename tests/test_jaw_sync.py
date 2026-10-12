@@ -40,5 +40,9 @@ def test_pcm_validation_and_bound(settings):
     b = PlaybackBuffer(settings)
     with pytest.raises(ValueError):
         b.push(b"a")
-    with pytest.raises(BufferError):
-        b.push(bytes(16000 * 16 * 2))
+    assert b.push(bytes(16000 * 31 * 2)) == 16000
+    assert b.samples == 16000 * 30
+    assert b.stats()["dropped_samples"] == 16000
+    assert b.push(bytes(320 * 2)) == 320
+    b.render(320)
+    assert b.push(bytes(320 * 2)) == 0

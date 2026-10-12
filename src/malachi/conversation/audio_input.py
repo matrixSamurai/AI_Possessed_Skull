@@ -148,7 +148,10 @@ class AudioDuplex:
                         self.send(bytes(pending))
                     pending.clear()
                 except Exception:
-                    self.emit(ConversationEvent(kind="error", detail="audio transmission failed"))
+                    if not self.stop_event.is_set():
+                        self.emit(
+                            ConversationEvent(kind="error", detail="audio transmission failed")
+                        )
                     return
                 continue
             if self.stop_event.is_set():
@@ -158,7 +161,8 @@ class AudioDuplex:
                     self.send(bytes(pending[:target_bytes]))
                     del pending[:target_bytes]
             except Exception:
-                self.emit(ConversationEvent(kind="error", detail="audio transmission failed"))
+                if not self.stop_event.is_set():
+                    self.emit(ConversationEvent(kind="error", detail="audio transmission failed"))
                 return
 
     def stop(self):

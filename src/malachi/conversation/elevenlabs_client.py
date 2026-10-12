@@ -30,6 +30,8 @@ class ElevenLabsClient:
         self.connected_at = None
         self.greeting_pending = False
         self.opening_style = None
+        self.response_pending_until = 0.0
+        self.audio_overflow_reported = False
 
     async def _deliver_snapshot(self, ws, conversation_id, stop):
         from malachi.vision.scene_context import ElevenLabsImageUploader, PHOTO_INSTRUCTIONS
@@ -63,11 +65,14 @@ class ElevenLabsClient:
             loop = asyncio.get_running_loop()
             deadline = loop.time() + self.settings.vision_context_delivery_wait_seconds
             while not stop.is_set():
+                if self.image_upload_disabled:
+                    return
                 now = loop.time()
                 pending = (
                     self.playback.samples > 0
                     or self.audio.agent_speaking
                     or self.audio.user_speaking
+                    or now < self.response_pending_until
                 )
                 if self.last_audio_received is None:
                     settling = self.connected_at is not None and now - self.connected_at < 1.0
@@ -82,6 +87,7 @@ class ElevenLabsClient:
                     message = MultimodalMessageClientToOrchestratorEvent(
                         text=text, file_ids=[file_id]
                     ).to_dict()
+                    self.response_pending_until = loop.time() + 15
                     await asyncio.wait_for(ws.send(json.dumps(message)), timeout=2)
                     self.greeting_pending = False
                     self.audio.opening_pending = False
@@ -135,6 +141,7 @@ class ElevenLabsClient:
             return
         self.greeting_pending = False
         self.audio.opening_pending = False
+        self.response_pending_until = asyncio.get_running_loop().time() + 15
         try:
             await asyncio.wait_for(
                 ws.send(
@@ -162,17 +169,12 @@ class ElevenLabsClient:
     async def _snapshot_loop(self, ws, conversation_id, stop):
         from malachi.vision.scene_context import PreparedSnapshot, encode_snapshot
 
-        loop = asyncio.get_running_loop()
         while not stop.is_set():
-            started = loop.time()
             await self._deliver_snapshot(ws, conversation_id, stop)
             if self.snapshot_provider is None or self.image_upload_disabled:
                 return
             # One task, no queued frames and no catch-up burst after slow delivery.
-            delay = max(
-                0.1, self.settings.vision_context_interval_seconds - (loop.time() - started)
-            )
-            await asyncio.sleep(delay)
+            await asyncio.sleep(self.settings.vision_context_interval_seconds)
             if stop.is_set():
                 return
             try:
@@ -257,7 +259,11 @@ class ElevenLabsClient:
                     ws.send(json.dumps({"user_audio_chunk": base64.b64encode(audio).decode()})),
                     loop,
                 )
-                future.result(timeout=2)
+                try:
+                    future.result(timeout=2)
+                except Exception:
+                    future.cancel()
+                    raise
 
             snapshot_task = None
             try:
@@ -297,11 +303,23 @@ class ElevenLabsClient:
                         if int(message["audio_event"]["event_id"]) <= last_interrupt_id:
                             continue
                         self.last_audio_received = loop.time()
-                        self.playback.push(
+                        self.response_pending_until = 0.0
+                        dropped = self.playback.push(
                             base64.b64decode(message["audio_event"]["audio_base_64"])
                         )
+                        if dropped:
+                            self.image_upload_disabled = True
+                            if not self.audio_overflow_reported:
+                                self.audio_overflow_reported = True
+                                self.emit(
+                                    ConversationEvent(
+                                        kind="summary",
+                                        detail="Speech backlog limit reached: excess audio skipped; image updates disabled for this session; voice continues",
+                                    )
+                                )
                         self.emit(ConversationEvent(kind="activity"))
                     elif kind == "interruption":
+                        self.response_pending_until = 0.0
                         last_interrupt_id = int(message["interruption_event"]["event_id"])
                         self.playback.clear(interrupted=True)
                         self.emit(ConversationEvent(kind="agent_end"))
@@ -318,6 +336,7 @@ class ElevenLabsClient:
                             )
                         )
                     elif kind == "user_transcript":
+                        self.response_pending_until = loop.time() + 15
                         text = (
                             message["user_transcription_event"]["user_transcript"].strip().lower()
                         )
@@ -334,6 +353,7 @@ class ElevenLabsClient:
                         }:
                             self.emit(ConversationEvent(kind="goodbye"))
                     elif kind == "agent_response":
+                        self.response_pending_until = loop.time() + 5
                         self.emit(ConversationEvent(kind="activity"))
                         self.emit(
                             ConversationEvent(kind="summary", detail="Agent response received")
@@ -341,6 +361,11 @@ class ElevenLabsClient:
                     elif kind == "error":
                         raise ElevenLabsServiceError(message)
             finally:
+                # Stop microphone sends before the socket context closes. Audio
+                # streams are closed by the manager after this coroutine returns.
+                audio_stop = getattr(self.audio, "stop_event", None)
+                if audio_stop is not None:
+                    audio_stop.set()
                 self.audio.opening_pending = False
                 if snapshot_task is not None:
                     snapshot_task.cancel()

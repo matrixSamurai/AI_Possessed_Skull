@@ -115,10 +115,14 @@ class AmbienceService:
                             self.emit(ConversationEvent(kind="summary", detail=self.engine.status))
                 self.exit.wait(0.02)
         finally:
-            if stream is not None:
-                stream.stop()
-                stream.close()
-            self.released.set()
+            try:
+                if stream is not None:
+                    stream.stop()
+                    stream.close()
+            finally:
+                self.released.set()
+                if self.fresh_effects is not None:
+                    self.fresh_effects.close()
 
     def stop(self):
         self.engine.stop()
