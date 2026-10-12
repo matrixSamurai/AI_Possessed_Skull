@@ -248,3 +248,9 @@ slow red halo breathes around the sockets. Intensity varies gently during conver
 and settles during cooldown or emergency stop. Blinking and face-following remain
 active; the effects do not alter servo motion or voice behavior. This is theatrical
 state-driven animation, not emotion recognition or an LLM-controlled anger signal.
+
+The possessed-eye renderer also supports seven presets: inferno, spectral, storm,
+hypnosis, mischievous, mirror and calm. The ElevenLabs agent can choose them through
+`set_eye_effect` once its client tool is configured. See
+[agent eye animation setup](docs/eye-animation-tools.md) for the exact tool definition
+and prompt. Automatic effects run immediately even before tool setup.

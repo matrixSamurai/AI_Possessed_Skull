@@ -41,3 +41,56 @@ def test_paint_eyes_at_each_intensity_and_blink(qtbot):
         image = widget.grab().toImage()
         assert not image.isNull() and image.width() == 420
     assert len(widget.veins) == 12
+
+
+def test_agent_choice_expires_and_emergency_clears_it():
+    from malachi.ui.eye_commands import EyeCommand
+
+    effects = EyeEffects()
+    effects.choose(EyeCommand(preset="inferno", duration_seconds=2), 10)
+    effects.update("CONVERSING", 10, speaking=True)
+    assert effects.preset == "inferno"
+    effects.update("CONVERSING", 12.1, speaking=True)
+    assert effects.preset == "spectral" and effects.command is None
+    effects.choose(EyeCommand(preset="mirror"), 13)
+    effects.update("CONVERSING", 13, emergency=True)
+    assert effects.command is None
+
+
+def test_all_presets_render_distinct_images_and_owned_reflection(qtbot):
+    import numpy as np
+    from malachi.ui.eye_commands import PRESETS
+
+    widget = AnimatedSkull(SimpleNamespace(x=0, y=0, jaw=0), SimpleNamespace(angles=lambda: (0, 0)))
+    qtbot.addWidget(widget)
+    widget.resize(420, 420)
+    frame = np.full((80, 120, 3), [20, 60, 200], np.uint8)
+    widget.set_reflection(frame, 1)
+    assert widget.reflection.pixelColor(0, 0).red() == 200
+    frame[:] = 0
+    assert widget.reflection.pixelColor(0, 0).red() == 200  # Owned copy, not borrowed pixels.
+    rendered = []
+    for preset in PRESETS:
+        widget.effects.preset = preset
+        widget.effects.intensity = 0.95
+        widget.effects.phase = 4
+        rendered.append(bytes(widget.grab().toImage().bits()))
+    assert len(set(rendered)) == len(PRESETS)
+    widget.set_reflection(None, 2)
+    assert widget.reflection is None
+
+
+def test_eye_command_rejects_unknown_or_unbounded_requests():
+    import pytest
+    from pydantic import ValidationError
+    from malachi.ui.eye_commands import EyeCommand
+
+    for args in [
+        {"preset": "unknown"},
+        {"preset": "storm", "intensity": 2},
+        {"preset": "mirror", "duration_seconds": 1000},
+        {"preset": "calm", "intensity": float("nan")},
+        {"preset": "calm", "hardware": "move"},
+    ]:
+        with pytest.raises(ValidationError):
+            EyeCommand.model_validate(args)

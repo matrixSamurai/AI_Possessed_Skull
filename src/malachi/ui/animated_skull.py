@@ -1,7 +1,7 @@
 import math
 import random
 from PySide6.QtCore import Qt, QRectF, QPointF
-from PySide6.QtGui import QColor, QPainter, QRadialGradient, QFont, QPainterPath, QPen
+from PySide6.QtGui import QColor, QPainter, QRadialGradient, QFont, QPainterPath, QPen, QImage
 from PySide6.QtWidgets import QWidget
 from malachi.ui.eye_effects import EyeEffects
 
@@ -12,6 +12,8 @@ class AnimatedSkull(QWidget):
         self.motion, self.eyes = motion, eyes
         self.blink = False
         self.effects = EyeEffects()
+        self.reflection = None
+        self.reflection_updated = float("-inf")
         self.veins = self._vein_paths()
         self.setMinimumSize(360, 390)
 
@@ -49,9 +51,33 @@ class AnimatedSkull(QWidget):
         p.drawText(
             QRectF(-190, 180, 380, 25),
             Qt.AlignmentFlag.AlignCenter,
-            f"SHARED EYES   •   PAN {self.eyes.angles()[0]:+.1f}°   TILT {self.eyes.angles()[1]:+.1f}°",
+            f"{self.effects.preset.upper()} GAZE   •   PAN {self.eyes.angles()[0]:+.1f}°   TILT {self.eyes.angles()[1]:+.1f}°",
         )
         p.end()
+
+    def set_reflection(self, frame, now, face=None):
+        if frame is None:
+            self.reflection = None
+            return
+        if now - self.reflection_updated < 0.2:
+            return
+        import cv2
+
+        if face is not None:
+            height, width = frame.shape[:2]
+            x1, y1, x2, y2 = face.box
+            dx, dy = (x2 - x1) * 0.4, (y2 - y1) * 0.4
+            left, right = max(0, int((x1 - dx) * width)), min(width, int((x2 + dx) * width))
+            top, bottom = max(0, int((y1 - dy) * height)), min(height, int((y2 + dy) * height))
+            if right > left and bottom > top:
+                frame = frame[top:bottom, left:right]
+        rgb = cv2.cvtColor(cv2.resize(frame, (160, 90)), cv2.COLOR_BGR2RGB)
+        self.reflection = (
+            QImage(rgb.data, 160, 90, rgb.strides[0], QImage.Format.Format_RGB888)
+            .copy()
+            .mirrored(True, False)
+        )
+        self.reflection_updated = now
 
     @staticmethod
     def _vein_paths():
@@ -83,11 +109,15 @@ class AnimatedSkull(QWidget):
         )
 
     def _paint_eye(self, p, x):
-        fury, phase = self.effects.intensity, self.effects.phase
+        energy, phase = self.effects.intensity, self.effects.phase
+        fury = energy if self.effects.preset == "inferno" else energy * 0.25
+        accent = QColor(*(round(c) for c in self.effects.accent))
         rect = QRectF(x - 42, -85, 84, 74)
         breathing = 0.92 + 0.08 * math.sin(phase * 1.5)
         halo = QRadialGradient(x, -48, 68)
-        halo.setColorAt(0, QColor(210, 15, 42, round(100 * fury * breathing)))
+        halo.setColorAt(
+            0, QColor(accent.red(), accent.green(), accent.blue(), round(130 * energy * breathing))
+        )
         halo.setColorAt(1, QColor(160, 0, 30, 0))
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(halo)
@@ -112,8 +142,8 @@ class AnimatedSkull(QWidget):
         p.restore()
         px, py = x + self.motion.x * 23, -48 + self.motion.y * 18
         iris = QRadialGradient(px - 4, py - 5, 26)
-        iris.setColorAt(0, self._blend("#9cf0d2", "#ff8157", fury))
-        iris.setColorAt(0.55, self._blend("#277a80", "#c01636", fury))
+        iris.setColorAt(0, self._blend("#e0ffe9", accent.name(), energy))
+        iris.setColorAt(0.55, self._blend("#277a80", accent.darker(135).name(), energy))
         iris.setColorAt(1, self._blend("#102e42", "#390514", fury))
         p.setPen(QPen(QColor("#17121e"), 1.5))
         p.setBrush(iris)
@@ -125,10 +155,21 @@ class AnimatedSkull(QWidget):
                 QPointF(px + math.cos(angle) * 12, py + math.sin(angle) * 12),
                 QPointF(px + math.cos(angle) * 21, py + math.sin(angle) * 21),
             )
+        self._paint_preset(p, px, py, accent, phase, energy)
         pupil = 8.5 - 4 * fury + math.sin(phase * 1.2) * 0.4
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor("#07060b"))
-        p.drawEllipse(QRectF(px - pupil, py - 14, pupil * 2, 28))
+        if self.effects.preset == "mischievous":
+            star = QPainterPath()
+            for i in range(10):
+                angle = i * math.pi / 5 - math.pi / 2 + phase * 0.15
+                radius = 13 if i % 2 == 0 else 5
+                point = QPointF(px + math.cos(angle) * radius, py + math.sin(angle) * radius)
+                star.moveTo(point) if i == 0 else star.lineTo(point)
+            star.closeSubpath()
+            p.drawPath(star)
+        elif self.effects.preset != "mirror":
+            p.drawEllipse(QRectF(px - pupil, py - 14, pupil * 2, 28))
         p.setBrush(QColor(255, 246, 221, 225))
         p.drawEllipse(QRectF(px - 8, py - 13, 5, 5))
         p.setBrush(QColor(255, 246, 221, 85))
@@ -149,3 +190,55 @@ class AnimatedSkull(QWidget):
             p.drawEllipse(rect)
         p.restore()
         p.setPen(Qt.PenStyle.NoPen)
+
+    def _paint_preset(self, p, px, py, accent, phase, fury):
+        p.save()
+        preset = self.effects.preset
+        if preset == "mirror" and self.reflection is not None:
+            iris_clip = QPainterPath()
+            iris_clip.addEllipse(QRectF(px - 22, py - 22, 44, 44))
+            p.setClipPath(iris_clip, Qt.ClipOperation.IntersectClip)
+            p.setOpacity(0.8)
+            p.drawImage(QRectF(px - 37, py - 22, 74, 44), self.reflection)
+        elif preset == "inferno":
+            for i in range(9):
+                x = px - 23 + i * 5.5
+                height = 10 + fury * (14 + 9 * math.sin(phase * 2.4 + i * 1.7))
+                flame = QPainterPath(QPointF(x - 4, py + 16))
+                flame.cubicTo(
+                    x - 9, py - 2, x + 6 * math.sin(phase + i), py - height, x, py - height - 6
+                )
+                flame.cubicTo(x + 9, py - height / 2, x + 7, py + 7, x + 4, py + 16)
+                flame.closeSubpath()
+                p.setPen(Qt.PenStyle.NoPen)
+                p.setBrush(QColor(255, 65 + i * 12, 10, round(100 * fury)))
+                p.drawPath(flame)
+        elif preset in ("spectral", "hypnosis"):
+            for j in range(3):
+                path = QPainterPath()
+                for i in range(100):
+                    angle = (
+                        i * 0.12
+                        + phase * (0.3 if preset == "hypnosis" else -0.2)
+                        + j * math.tau / 3
+                    )
+                    radius = 2 + i * 0.2
+                    point = QPointF(px + math.cos(angle) * radius, py + math.sin(angle) * radius)
+                    path.moveTo(point) if i == 0 else path.lineTo(point)
+                p.setPen(
+                    QPen(
+                        QColor(accent.red(), accent.green(), accent.blue(), 130),
+                        1.2 if preset == "hypnosis" else 2.2,
+                    )
+                )
+                p.drawPath(path)
+        elif preset == "storm":
+            for j in range(3):
+                path = QPainterPath(QPointF(px - 23, py - 14 + j * 13))
+                for i in range(1, 9):
+                    path.lineTo(
+                        px - 23 + i * 6, py - 14 + j * 13 + math.sin(i * 3 + phase * 1.5 + j) * 6
+                    )
+                p.setPen(QPen(QColor(225, 215, 255, 150), 1.3))
+                p.drawPath(path)
+        p.restore()

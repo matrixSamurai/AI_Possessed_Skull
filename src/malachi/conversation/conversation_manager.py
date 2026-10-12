@@ -42,7 +42,7 @@ class ConversationManager:
             self.audio.ambience = self.ambience
 
     def emit(self, event):
-        if event.kind in ("error", "summary", "scene"):
+        if event.kind in ("error", "summary", "scene", "eye_effect"):
             logging.getLogger("malachi").log(
                 logging.ERROR if event.kind == "error" else logging.INFO,
                 "%s: %s",

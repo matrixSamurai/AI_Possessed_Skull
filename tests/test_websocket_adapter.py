@@ -229,3 +229,35 @@ def test_audio_backlog_does_not_close_connection_and_ping_continues(monkeypatch,
     assert any("Speech backlog limit reached" in event.detail for event in events)
     assert not any(event.kind == "error" for event in events)
     assert {"type": "pong", "event_id": 44} in sent
+
+
+def test_agent_eye_tool_is_acknowledged_without_interrupting_audio(monkeypatch, settings):
+    def tool(identifier, parameters, name="set_eye_effect"):
+        return {
+            "type": "client_tool_call",
+            "client_tool_call": {
+                "tool_call_id": identifier,
+                "tool_name": name,
+                "parameters": parameters,
+            },
+        }
+
+    buffer, events, sent = run_adapter(
+        monkeypatch,
+        settings,
+        [
+            metadata(),
+            audio(1),
+            tool("valid", {"preset": "inferno", "intensity": 0.95}),
+            tool("invalid", {"preset": "not-an-effect"}),
+            {"type": "ping", "ping_event": {"event_id": 18}},
+        ],
+    )
+    commands = [event for event in events if event.kind == "eye_effect"]
+    assert len(commands) == 1 and json.loads(commands[0].detail)["preset"] == "inferno"
+    results = {
+        item["tool_call_id"]: item for item in sent if item.get("type") == "client_tool_result"
+    }
+    assert results["valid"]["is_error"] is False and results["invalid"]["is_error"] is True
+    assert buffer.samples == 320
+    assert {"type": "pong", "event_id": 18} in sent

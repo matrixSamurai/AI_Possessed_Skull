@@ -245,9 +245,17 @@ class Dashboard(QMainWindow):
                 event = self.manager.events.get_nowait()
             except queue.Empty:
                 break
+            if (
+                event.kind == "eye_effect"
+                and self.machine.state == State.CONVERSING
+                and not self.machine.emergency
+            ):
+                from malachi.ui.eye_commands import EyeCommand
+
+                self.skull.effects.choose(EyeCommand.model_validate_json(event.detail), now)
             self.manager.mark(event, now)
             self.machine.event(event, now)
-            if event.kind in ("summary", "error", "closed", "connected", "scene"):
+            if event.kind in ("summary", "error", "closed", "connected", "scene", "eye_effect"):
                 self.log.appendPlainText(f"{event.kind}: {event.detail}")
         self.machine.tick(self.face, now, people_present=bool(faces))
         state = self.machine.state
@@ -319,6 +327,10 @@ class Dashboard(QMainWindow):
             self.manager.audio.agent_speaking,
             self.machine.emergency,
         )
+        if self.skull.effects.preset == "mirror":
+            self.skull.set_reflection(None if error or not faces else frame, now, self.face)
+        else:
+            self.skull.reflection = None
         self.skull.blink = now < self.eyes.blink_until
         self.skull.update()
         self.preview.show_frame(frame, faces, self.face)

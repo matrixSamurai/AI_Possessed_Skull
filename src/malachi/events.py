@@ -26,5 +26,6 @@ class ConversationEvent(BaseModel):
         "goodbye",
         "summary",
         "scene",
+        "eye_effect",
     ]
     detail: str = ""
