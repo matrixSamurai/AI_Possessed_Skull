@@ -94,3 +94,21 @@ def test_eye_command_rejects_unknown_or_unbounded_requests():
     ]:
         with pytest.raises(ValidationError):
             EyeCommand.model_validate(args)
+
+
+def test_reflection_has_blur_and_animated_glitch(qtbot):
+    import numpy as np
+
+    widget = AnimatedSkull(SimpleNamespace(x=0, y=0, jaw=0), SimpleNamespace(angles=lambda: (0, 0)))
+    qtbot.addWidget(widget)
+    widget.resize(420, 500)
+    frame = np.zeros((160, 160, 3), np.uint8)
+    frame[:, ::2] = 255
+    widget.set_reflection(frame, 1)
+    assert 0 < widget.reflection.pixelColor(80, 80).red() < 255
+    widget.effects.preset = "mirror"
+    widget.effects.phase = 1
+    first = bytes(widget.grab().toImage().bits())
+    widget.effects.phase = 4
+    second = bytes(widget.grab().toImage().bits())
+    assert first != second

@@ -112,9 +112,10 @@ class AnimatedSkull(QWidget):
             top, bottom = max(0, int((y1 - dy) * height)), min(height, int((y2 + dy) * height))
             if right > left and bottom > top:
                 frame = frame[top:bottom, left:right]
-        rgb = cv2.cvtColor(cv2.resize(frame, (160, 90)), cv2.COLOR_BGR2RGB)
+        resized = cv2.resize(frame, (160, 160))
+        rgb = cv2.cvtColor(cv2.GaussianBlur(resized, (3, 3), 0.45), cv2.COLOR_BGR2RGB)
         self.reflection = (
-            QImage(rgb.data, 160, 90, rgb.strides[0], QImage.Format.Format_RGB888)
+            QImage(rgb.data, 160, 160, rgb.strides[0], QImage.Format.Format_RGB888)
             .copy()
             .mirrored(True, False)
         )
@@ -210,12 +211,16 @@ class AnimatedSkull(QWidget):
             slit.cubicTo(px - 10, py + 5, px + 1, py - 9, px - 3, py - 20)
             p.drawPath(slit)
         else:
+            if self.effects.preset == "mirror":
+                p.setOpacity(0.28)
+                pupil = 3
             p.drawEllipse(QRectF(px - pupil, py - 19, pupil * 2, 38))
+            p.setOpacity(1)
         p.setBrush(QColor(219, 220, 199, 105))
         p.drawEllipse(QRectF(px - 7, py - 12, 2.5, 2.5))
         shadow = QRadialGradient(x, -48, 43)
         shadow.setColorAt(0.45, QColor(0, 0, 0, 0))
-        shadow.setColorAt(1, QColor(3, 2, 5, 195))
+        shadow.setColorAt(1, QColor(3, 2, 5, 125 if self.effects.preset == "mirror" else 195))
         p.setBrush(shadow)
         p.drawEllipse(rect)
         # Inward-slanting lids build a theatrical angry stare.
@@ -240,10 +245,24 @@ class AnimatedSkull(QWidget):
         preset = self.effects.preset
         if preset == "mirror" and self.reflection is not None:
             iris_clip = QPainterPath()
-            iris_clip.addEllipse(QRectF(px - 22, py - 22, 44, 44))
+            iris_clip.addEllipse(QRectF(px - 38, py - 30, 76, 60))
             p.setClipPath(iris_clip, Qt.ClipOperation.IntersectClip)
-            p.setOpacity(0.48)
-            p.drawImage(QRectF(px - 37, py - 22, 74, 44), self.reflection)
+            destination = QRectF(px - 38, py - 30, 76, 60)
+            p.setOpacity(0.78)
+            p.drawImage(destination, self.reflection)
+            # Drifting horizontal distortions, not full-screen flashes.
+            for i in range(3):
+                fraction = (phase * 0.09 + i * 0.31) % 0.94
+                offset = math.sin(phase * 1.3 + i * 2.1) * 5
+                band = QRectF(px - 38 + offset, py - 30 + fraction * 60, 76, 3)
+                source = QRectF(0, fraction * self.reflection.height(), self.reflection.width(), 8)
+                p.setOpacity(0.55)
+                p.drawImage(band, self.reflection, source)
+            p.setOpacity(1)
+            p.setPen(QPen(QColor(135, 175, 164, 35), 0.6))
+            for i in range(12):
+                y = py - 28 + i * 5
+                p.drawLine(QPointF(px - 38, y), QPointF(px + 38, y))
         elif preset == "inferno":
             for i in range(9):
                 x = px - 23 + i * 5.5

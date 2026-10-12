@@ -354,7 +354,10 @@ class Dashboard(QMainWindow):
             emergency=self.machine.emergency,
         )
         if self.skull.effects.preset == "mirror":
-            self.skull.set_reflection(None if error or not faces else frame, now, self.face)
+            if error:
+                self.skull.set_reflection(None, now)
+            elif now - self.skull.reflection_updated >= 0.2:
+                self.skull.set_reflection(self.camera.interaction_snapshot(), now, self.face)
         else:
             self.skull.reflection = None
         self.skull.blink = now < self.eyes.blink_until

@@ -71,3 +71,17 @@ spirals have been removed. Reflections are dimmed beneath slit pupils, highlight
 are small, and the sclera is shadowed and bloodshot. The existing tool preset names
 remain compatible; `mischievous` now means a crooked, menacing stare. Effects move
 slowly rather than flashing or strobing.
+
+## Mirror visibility and distortion
+
+The mirror preset now fills a wider area inside each eye with a gently blurred camera
+reflection, moving displaced horizontal bands and faint scan lines. Its pupil is
+translucent and shadows are reduced so the face remains visible. Fresh camera frames
+can supply a room reflection even when face detection misses someone; when a selected
+face is available, it is cropped for a larger face reflection. Stale or stopped camera
+frames are rejected. This remains a local visual effect, not another image upload.
+
+To request it, say “Reflect my face in your eyes” to the tool-enabled agent. The local
+log should show an eye_effect request with preset mirror, and the display footer should
+say MIRROR GAZE. If the agent never calls that preset, the tool configuration or agent
+prompt needs checking; the renderer cannot make the agent issue a tool request.
