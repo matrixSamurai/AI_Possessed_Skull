@@ -19,6 +19,7 @@ CONVERSATION_BACKEND=elevenlabs
 ELEVENLABS_AGENT_ID=your_existing_agent_id
 ELEVENLABS_API_KEY=your_existing_key
 VISION_CONTEXT_ENABLED=true
+VISION_CONTEXT_INTERVAL_SECONDS=10
 VISION_CONTEXT_TIMEOUT_SECONDS=5
 VISION_CONTEXT_MAX_IMAGE_SIDE=640
 VISION_CONTEXT_DELIVERY_WAIT_SECONDS=15
@@ -43,7 +44,8 @@ files just because the SDK has an upload method. The SDK models file input as
 Suggested guidance for the agent system prompt:
 
 ```text
-You may receive one camera image near the beginning of an interaction. Treat it as
+You may receive camera images at the beginning and roughly every ten seconds.
+Use the latest image, compare visible changes and people counts, and treat it as
 background visual context rather than words spoken by the visitor. Continue in your
 MALACHI ghost persona; mention clearly visible clothing colors or nearby objects
 naturally when useful. Do not identify people, infer sensitive traits, read private
@@ -81,8 +83,14 @@ upload/encoding/delivery failures produce a status without requesting session sh
 An unsupported backend may still reject the multimodal input at the service level;
 configure file support before enabling it.
 
-Only one upload is attempted per authorized connected session. Pre-connection retries
-reuse the prepared snapshot; connected sessions are not automatically recreated.
+After the initial image, fresh snapshots are captured roughly every 10 seconds
+(configurable from 10 to 120 seconds). A single background task serializes captures,
+uploads and delivery; slow uploads or speech can delay updates, without a frame backlog.
+Each attachment asks the model to compare visible people counts and scene changes
+and use the latest observations in subsequent conversation. This is sampled vision,
+not continuous video or identity tracking. Unsupported upload/configuration errors
+(HTTP 400/401/403) and rate limits (429) disable further uploads for that session.
+Pre-connection retries reuse the first prepared snapshot; sessions are not recreated.
 End Session and Emergency Stop cancel pending upload/delivery. No late message is sent
 after a stop. Missing/stale camera frames allow voice-only operation.
 
@@ -97,7 +105,7 @@ retention, summarization and backend model processing follow ElevenLabs' setting
 terms. An uploaded but undelivered file may remain attached to the conversation;
 local cancellation does not guarantee remote deletion. File uploads can be billed
 under your ElevenLabs plan. Set server-side file limits appropriately (one upload
-per interaction in MALACHI) and VISION_CONTEXT_ENABLED=false to disable uploads.
+roughly 19 attempts per default 180-second interaction) and VISION_CONTEXT_ENABLED=false to disable uploads.
 
 ## Tests and troubleshooting
 
@@ -112,7 +120,7 @@ Actual agent/model support and image interpretation must be verified on your Mac
 - ApiError / UnprocessableEntityError: verify file input, selected model, API-key scope,
   account feature support and file quota. Ordinary voice may still work.
 - No speech pause: let the greeting/response finish; avoid talking continuously while
-  the one-time image is pending. Increase the delivery wait if needed.
+  an image is pending. Increase the delivery wait if needed.
 - Sent, but no visual reference: check the agent prompt and model's image support;
   the status is delivery evidence, not an interpretation or recognition result.
 - Repeated self-interruption from speakers: retain the Speaker echo guard setting.
@@ -139,7 +147,7 @@ branch/model route's capability.
 Share that output plus the desktop dashboard's visual-context status to distinguish
 local-disabled/no-frame, REST-upload rejection, skipped delivery and model/prompt behavior.
 Image-upload errors now include a numeric HTTP status when supplied by the SDK, never
-its private error body. The photo instruction explicitly asks for one visible detail
+its private error body. The photo instruction asks for updated scene context
 and an accurate answer to visual questions; it cannot make a text-only model see images.
 
 The ElevenLabs Client data panel's visual_context dynamic variable is a connection-time

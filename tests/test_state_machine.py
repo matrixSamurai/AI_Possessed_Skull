@@ -184,3 +184,23 @@ def test_three_second_override_remains_supported(settings, face):
     assert m.state == State.STALKING
     m.tick(face, 3.3)
     assert m.state == State.AWAKENING
+
+
+def test_occupancy_survives_selected_person_leaving(settings, face):
+    m = StateMachine(settings)
+    m.start(0)
+    m.event(ConversationEvent(kind="connected"), 1)
+    m.event(ConversationEvent(kind="agent_start"), 2)
+    # A second visitor becomes selected, then leaves. Another face remains.
+    m.tick(face.model_copy(update={"track_id": 2}), 3, people_present=True)
+    for now in (4, 15, 25, 45):
+        m.tick(None, now, people_present=True)
+        assert m.state == State.CONVERSING
+        assert m.policy.absent_since is None
+    m.tick(None, 46, people_present=False)
+    m.tick(face, 65, people_present=True)
+    m.tick(None, 66, people_present=False)
+    m.tick(None, 85.999, people_present=False)
+    assert m.state == State.CONVERSING
+    m.tick(None, 86, people_present=False)
+    assert m.reason == "visitor absent"

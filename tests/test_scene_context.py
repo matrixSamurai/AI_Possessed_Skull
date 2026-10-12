@@ -269,3 +269,56 @@ def test_openai_key_is_not_required_or_used(enabled):
     assert "openai_api_key" not in type(enabled).model_fields
     snapshot = ConversationManager(enabled)._prepare_snapshot(np.zeros((20, 20, 3), np.uint8))
     assert snapshot is not None and snapshot.take().startswith(b"\xff\xd8")
+
+
+def test_periodic_images_are_fresh_serial_and_stop_with_session(enabled):
+    import json
+
+    enabled = SimpleNamespace(**enabled.model_dump())
+    enabled.vision_context_interval_seconds = 0.02
+    stop = threading.Event()
+    frames, uploads, messages = [], [], []
+
+    def provider():
+        frames.append(len(frames))
+        return np.full((20, 20, 3), 80 * len(frames), np.uint8)
+
+    class Uploader:
+        async def upload(self, conversation_id, jpeg):
+            assert conversation_id == "same_session"
+            uploads.append(jpeg)
+            return f"file_{len(uploads)}"
+
+    class Socket:
+        async def send(self, data):
+            messages.append(json.loads(data))
+            if len(messages) == 3:
+                stop.set()
+
+    client = make_client(enabled, Uploader())
+    client.snapshot = PreparedSnapshot(b"initial")
+    client.snapshot_provider = provider
+    asyncio.run(asyncio.wait_for(client._snapshot_loop(Socket(), "same_session", stop), 1))
+    assert len(frames) == 2 and len(uploads) == 3
+    assert uploads[0] == b"initial" and uploads[1] != uploads[2]
+    assert len(messages) == 3 and client.snapshot is None
+    assert all("supersedes older images" in m["text"]["text"] for m in messages)
+
+
+def test_unsupported_model_disables_periodic_uploads(enabled):
+    class Failure(Exception):
+        status_code = 400
+
+    class Uploader:
+        calls = 0
+
+        async def upload(self, *args):
+            self.calls += 1
+            raise Failure()
+
+    uploader = Uploader()
+    client = make_client(enabled, uploader)
+    client.snapshot = PreparedSnapshot(b"jpeg")
+    client.snapshot_provider = lambda: pytest.fail("Unsupported model must not keep capturing")
+    asyncio.run(client._snapshot_loop(None, "session", threading.Event()))
+    assert uploader.calls == 1 and client.image_upload_disabled

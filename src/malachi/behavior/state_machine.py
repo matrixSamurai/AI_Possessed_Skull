@@ -39,8 +39,9 @@ class StateMachine:
             return 0.0
         return min(1.0, (now - self.facing_since) / self.settings.face_facing_hold_seconds)
 
-    def tick(self, face, now):
-        present = face is not None
+    def tick(self, face, now, people_present=None):
+        # Occupancy is independent of the selected eye-tracking target.
+        present = face is not None if people_present is None else people_present
         if present:
             self.last_seen = now
             self.absent_since = None

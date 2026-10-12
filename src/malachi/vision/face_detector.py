@@ -39,7 +39,9 @@ class FaceDetector:
             try:
                 yaw, pitch = estimate_pose(landmarks, w, h)
             except ValueError:
-                continue
+                # Pose failure must not erase an otherwise detected occupant.
+                # Conservative angles prevent qualifying an unknown pose to start.
+                yaw, pitch = 90.0, 90.0
             # Landmarker exposes no per-face probability: report configured lower bound.
             faces.append(
                 Face(

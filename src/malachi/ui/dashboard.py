@@ -249,7 +249,7 @@ class Dashboard(QMainWindow):
             self.machine.event(event, now)
             if event.kind in ("summary", "error", "closed", "connected", "scene"):
                 self.log.appendPlainText(f"{event.kind}: {event.detail}")
-        self.machine.tick(self.face, now)
+        self.machine.tick(self.face, now, people_present=bool(faces))
         state = self.machine.state
         if self.manager.ambience is not None:
             moving, _ = self.camera.motion_snapshot()
@@ -270,7 +270,7 @@ class Dashboard(QMainWindow):
                     if self.settings.vision_context_enabled
                     else None
                 )
-                self.manager.start(frame)
+                self.manager.start(frame, snapshot_provider=self.camera.interaction_snapshot)
         if state == State.ENDING:
             self.manager.end()
             self.motion.neutral_position()

@@ -138,6 +138,7 @@ class CameraService:
             with self.lock:
                 self.error = f"Camera: {type(exc).__name__}: {exc}"
                 self.face = None
+                self.faces = []
         finally:
             if cap is not None:
                 cap.release()

@@ -85,13 +85,15 @@ Use your existing ElevenLabs credentials—no separate GPT/OpenAI API key:
 
 ```dotenv
 VISION_CONTEXT_ENABLED=true
+VISION_CONTEXT_INTERVAL_SECONDS=10
 ```
 
 Enable **file input / image uploads** on your ElevenLabs agent and choose an
 image-capable backend LLM through ElevenLabs. At interaction start, MALACHI captures
-one fresh webcam frame, connects voice, uploads the frame to that conversation and
-sends it as a multimodal message at a speech pause. Your ghost's backend model uses
-the attached image as context. The fixed first greeting is preserved.
+a fresh webcam frame, connects voice, then repeats snapshots about every 10 seconds.
+Each frame is uploaded to the same conversation and delivered at a speech pause.
+The model is instructed to compare people counts and scene changes and use the
+latest image as context. The fixed first greeting is preserved.
 
 The photo is uploaded to ElevenLabs but not saved locally. Demo and vision-only modes
 never upload. Upload is timeout-bounded and optional; camera tracking, audio and

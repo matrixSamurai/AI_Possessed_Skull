@@ -28,6 +28,7 @@ class ConversationManager:
         self.factory = client_factory
         self.scene_status = "Disabled"
         self.pending_frame = None
+        self.snapshot_provider = None
         self.mock_reply = threading.Event()
         self.ambience = None
         if settings.ambience_enabled:
@@ -50,7 +51,7 @@ class ConversationManager:
         except queue.Full:
             self.stop_event.set()
 
-    def start(self, frame=None):
+    def start(self, frame=None, snapshot_provider=None):
         if self.thread and self.thread.is_alive():
             return False
         self.stop_event.clear()
@@ -61,6 +62,7 @@ class ConversationManager:
             or not self.settings.vision_context_enabled
         ):
             frame = None
+        self.snapshot_provider = snapshot_provider if self.settings.vision_context_enabled else None
         self.pending_frame = frame
         self.thread = threading.Thread(target=self._worker, daemon=True, name="conversation")
         self.thread.start()
@@ -114,6 +116,7 @@ class ConversationManager:
                     return
                 try:
                     client = factory(self.settings, self.playback, self.audio, self.emit)
+                    client.snapshot_provider = self.snapshot_provider
                     if snapshot is not None:
                         client.snapshot = snapshot
                     await client.run(self.stop_event)

@@ -14,6 +14,8 @@ class ElevenLabsClient:
     def __init__(self, settings, playback, audio, emit, image_uploader=None):
         self.settings, self.playback, self.audio, self.emit = settings, playback, audio, emit
         self.snapshot = None
+        self.snapshot_provider = None
+        self.image_upload_disabled = False
         self.image_uploader = image_uploader
         self.last_audio_received = None
         self.connected_at = None
@@ -30,7 +32,7 @@ class ElevenLabsClient:
             return
         try:
             self.emit(
-                ConversationEvent(kind="scene", detail="Uploading one snapshot to ElevenLabs")
+                ConversationEvent(kind="scene", detail="Uploading camera snapshot to ElevenLabs")
             )
             uploader = self.image_uploader or ElevenLabsImageUploader(self.settings)
             file_id = await asyncio.wait_for(
@@ -84,6 +86,9 @@ class ElevenLabsClient:
             )
         except Exception as exc:
             status = getattr(exc, "status_code", None)
+            # Unsupported configuration/authentication will not improve this session.
+            if status in (400, 401, 403, 429):
+                self.image_upload_disabled = True
             status_hint = f" HTTP {status}" if status is not None else ""
             from malachi.conversation.upload_errors import upload_error_hint
 
@@ -97,6 +102,39 @@ class ElevenLabsClient:
             )
         finally:
             jpeg = None
+
+    async def _snapshot_loop(self, ws, conversation_id, stop):
+        from malachi.vision.scene_context import PreparedSnapshot, encode_snapshot
+
+        loop = asyncio.get_running_loop()
+        while not stop.is_set():
+            started = loop.time()
+            await self._deliver_snapshot(ws, conversation_id, stop)
+            if self.snapshot_provider is None or self.image_upload_disabled:
+                return
+            # One task, no queued frames and no catch-up burst after slow delivery.
+            delay = max(
+                0.1, self.settings.vision_context_interval_seconds - (loop.time() - started)
+            )
+            await asyncio.sleep(delay)
+            if stop.is_set():
+                return
+            try:
+                frame = await asyncio.to_thread(self.snapshot_provider)
+                if frame is not None:
+                    jpeg = await asyncio.to_thread(
+                        encode_snapshot, frame, self.settings.vision_context_max_image_side
+                    )
+                    self.snapshot = PreparedSnapshot(jpeg)
+                    jpeg = None
+                frame = None
+            except Exception as exc:
+                self.emit(
+                    ConversationEvent(
+                        kind="scene",
+                        detail=f"Snapshot skipped ({type(exc).__name__}); voice continues",
+                    )
+                )
 
     async def run(self, stop):
         from elevenlabs.client import ElevenLabs
@@ -118,7 +156,7 @@ class ElevenLabsClient:
             initiation = {
                 "type": "conversation_initiation_client_data",
                 "dynamic_variables": {
-                    "visual_context": "A one-time camera image may arrive as an attachment. "
+                    "visual_context": "Camera images may arrive as attachments during this conversation. "
                     "Use the attached image once received; this placeholder is not a scene description. "
                     "Do not invent details if no image is available."
                 },
@@ -156,9 +194,9 @@ class ElevenLabsClient:
                         ready = True
                         self.connected_at = loop.time()
                         self.emit(ConversationEvent(kind="connected"))
-                        if self.snapshot is not None:
+                        if self.snapshot is not None or self.snapshot_provider is not None:
                             snapshot_task = asyncio.create_task(
-                                self._deliver_snapshot(ws, meta["conversation_id"], stop)
+                                self._snapshot_loop(ws, meta["conversation_id"], stop)
                             )
                     elif kind == "audio":
                         if not ready:
@@ -213,3 +251,6 @@ class ElevenLabsClient:
                 if snapshot_task is not None:
                     snapshot_task.cancel()
                     await asyncio.gather(snapshot_task, return_exceptions=True)
+                if self.snapshot is not None:
+                    self.snapshot.take()
+                    self.snapshot = None
