@@ -40,3 +40,27 @@ def test_json_string_response_is_parsed_without_dump(settings):
     )
     assert upload_error_hint(error, settings) == "Model does not support images"
     assert upload_error_hint(RuntimeError("private exception"), settings) == ""
+
+
+def test_connection_diagnostics_show_code_without_signed_url(settings):
+    from types import SimpleNamespace
+    from malachi.conversation.upload_errors import connection_error_hint
+
+    class Closed(Exception):
+        rcvd = SimpleNamespace(code=1011, reason="secret wss://private.invalid/signed")
+
+    hint = connection_error_hint(Closed("secret URL"), settings)
+    assert hint == "Closed: WebSocket close 1011"
+    assert "secret" not in hint
+
+
+def test_service_error_message_is_redacted(settings):
+    from malachi.conversation.elevenlabs_client import ElevenLabsServiceError
+    from malachi.conversation.upload_errors import connection_error_hint
+
+    settings.elevenlabs_api_key = "test-secret"
+    error = ElevenLabsServiceError(
+        {"type": "error", "error_event": {"message": "File limit reached test-secret"}}
+    )
+    hint = connection_error_hint(error, settings)
+    assert "File limit reached" in hint and "test-secret" not in hint

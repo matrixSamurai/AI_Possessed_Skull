@@ -30,3 +30,19 @@ def upload_error_hint(error, settings):
     message = re.sub(r"[A-Za-z0-9+/=_-]{40,}", "[data redacted]", message)
     message = " ".join(message.split())
     return message[:240]
+
+
+def connection_error_hint(error, settings):
+    """Report structured service hints and socket codes, never raw exception strings."""
+    parts = [type(error).__name__]
+    status = getattr(error, "status_code", None)
+    if isinstance(status, int):
+        parts.append(f"HTTP {status}")
+    received = getattr(error, "rcvd", None)
+    code = getattr(received, "code", None)
+    if isinstance(code, int):
+        parts.append(f"WebSocket close {code}")
+    hint = upload_error_hint(error, settings)
+    if hint:
+        parts.append(hint)
+    return ": ".join(parts)

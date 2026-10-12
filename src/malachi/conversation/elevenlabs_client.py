@@ -10,6 +10,14 @@ import json
 from malachi.events import ConversationEvent
 
 
+class ElevenLabsServiceError(RuntimeError):
+    def __init__(self, message):
+        super().__init__("ElevenLabs service reported an error")
+        # Only extract structured error text through the shared redaction helper.
+        event = message.get("error_event", message)
+        self.body = {"detail": event} if isinstance(event, dict) else {}
+
+
 class ElevenLabsClient:
     def __init__(self, settings, playback, audio, emit, image_uploader=None):
         self.settings, self.playback, self.audio, self.emit = settings, playback, audio, emit
@@ -246,7 +254,7 @@ class ElevenLabsClient:
                             ConversationEvent(kind="summary", detail="Agent response received")
                         )
                     elif kind == "error":
-                        raise RuntimeError("ElevenLabs service reported an error")
+                        raise ElevenLabsServiceError(message)
             finally:
                 if snapshot_task is not None:
                     snapshot_task.cancel()

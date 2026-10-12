@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import queue
 import threading
 import time
@@ -38,6 +39,13 @@ class ConversationManager:
             self.audio.ambience = self.ambience
 
     def emit(self, event):
+        if event.kind in ("error", "summary", "scene"):
+            logging.getLogger("malachi").log(
+                logging.ERROR if event.kind == "error" else logging.INFO,
+                "%s: %s",
+                event.kind,
+                event.detail,
+            )
         if event.kind == "connected":
             self.ever_connected = True
         try:
@@ -123,11 +131,10 @@ class ConversationManager:
                     return
                 except Exception as exc:
                     self.failures += 1
-                    self.emit(
-                        ConversationEvent(
-                            kind="summary", detail=f"Connection: {type(exc).__name__}"
-                        )
-                    )
+                    from malachi.conversation.upload_errors import connection_error_hint
+
+                    failure = connection_error_hint(exc, self.settings)
+                    self.emit(ConversationEvent(kind="summary", detail=f"Connection: {failure}"))
                     if (
                         self.ever_connected
                         or isinstance(exc, (ValueError, ImportError))
@@ -135,7 +142,7 @@ class ConversationManager:
                     ):
                         self.emit(
                             ConversationEvent(
-                                kind="error", detail="Conversation failed; see setup docs"
+                                kind="error", detail=f"Conversation failed: {failure}"
                             )
                         )
                         return

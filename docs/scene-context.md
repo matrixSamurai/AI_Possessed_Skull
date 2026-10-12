@@ -170,3 +170,14 @@ A service restriction to text-only conversations, an unsupported model route, a 
 configuration restriction or a malformed request require different corrections. Do
 not treat a model's generic image capability or the presence of file input in agent
 settings as proof that the active voice conversation accepts files.
+
+## Session ends with `ENDING: error`
+
+This transition is distinct from `visitor absent`: it indicates an audio, transport,
+or service failure, not the selected person leaving. Terminal logs now include scene,
+summary and error events, structured redacted service messages, and received WebSocket
+close codes where available. Raw exception strings, signed URLs and close reasons are
+not printed. Check the lines immediately before the transition to diagnose the cause.
+Repeated images consume conversation file/context capacity; configure the agent's
+file limits for the intended session duration. A failure near an image interval alone
+does not establish that file limits or image input caused it.
