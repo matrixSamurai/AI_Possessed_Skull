@@ -213,3 +213,14 @@ and symlinks are not deleted. The logs folder is excluded from Git. These images
 contain the scene and visitors, so keep the folder private. Native libcamera stderr
 messages are still printed to the terminal; the JSON files contain MALACHI's Python
 application logs. Set `DIAGNOSTIC_CAPTURE_ENABLED=false` to stop saving images.
+
+### Unanswered conversation limit
+
+`MAX_UNANSWERED_AGENT_TURNS=3` (default) ends a live ElevenLabs session after three
+agent response turns without a nonempty visitor transcript. Visitor transcripts
+reset the counter; microphone noise and uploaded images do not. Response turns
+are counted from provider response events, not individual sentences or audio chunks.
+After the limit, playback must start and then settle for 1.5 seconds before closure,
+to avoid stopping on a brief speech pause. Existing inactivity, absence and maximum
+session timers still apply and may close a session earlier. This does not schedule
+three prompts: proactive follow-up behavior is controlled by the ElevenLabs agent.

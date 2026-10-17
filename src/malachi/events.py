@@ -20,6 +20,8 @@ class ConversationEvent(BaseModel):
         "closed",
         "error",
         "activity",
+        "user_response",
+        "agent_response",
         "user_start",
         "user_end",
         "agent_start",

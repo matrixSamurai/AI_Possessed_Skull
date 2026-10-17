@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     eye_max_velocity: float = Field(2, gt=0)
     eye_max_pan_degrees: float = Field(20, gt=0, le=30)
     eye_max_tilt_degrees: float = Field(15, gt=0, le=25)
+    max_unanswered_agent_turns: int = Field(3, ge=1, le=20)
     conversation_idle_timeout_seconds: float = Field(30, gt=0)
     visitor_absence_timeout_seconds: float = Field(20, gt=0)
     max_session_duration_seconds: float = Field(180, gt=0)

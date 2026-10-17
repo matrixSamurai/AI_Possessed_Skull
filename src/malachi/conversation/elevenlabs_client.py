@@ -346,6 +346,8 @@ class ElevenLabsClient:
                         self.emit(
                             ConversationEvent(kind="summary", detail="Visitor transcript received")
                         )
+                        if text:
+                            self.emit(ConversationEvent(kind="user_response"))
                         # Conservative explicit whole-utterance intent, never substring matching.
                         if text.rstrip(".!?") in {
                             "goodbye",
@@ -355,6 +357,7 @@ class ElevenLabsClient:
                         }:
                             self.emit(ConversationEvent(kind="goodbye"))
                     elif kind == "agent_response":
+                        self.emit(ConversationEvent(kind="agent_response"))
                         self.response_pending_until = loop.time() + 5
                         self.emit(ConversationEvent(kind="activity"))
                         self.emit(
