@@ -7,6 +7,12 @@ The host still manages Bluetooth pairing. A container does not repair camera rib
 faults, lighting problems, or unavailable audio hardware.
 
 The image installs camera libraries from Raspberry Pi's signed Trixie repository.
+The launcher stages the host's OS-managed public keyring from
+`/usr/share/keyrings/raspberrypi-archive-keyring.gpg`. This avoids the legacy
+standalone key download with an obsolete SHA-1 binding. No private keys are copied.
+APT signature checks remain enabled; if the host keyring is outdated too, update
+`raspberrypi-archive-keyring` through the host's trusted repositories first.
+Do not add `trusted=yes`, allow insecure repositories, or weaken SHA-1 policy.
 Build it on the Pi. This is not an x86 desktop image. Rebuild after host camera-stack
 updates if compatibility changes. Real CSI/Bluetooth operation must be checked on
 your Pi; cloud tests cannot verify that hardware.
@@ -81,3 +87,12 @@ It runs the app as your normal UID, but privileged mode grants broad device acce
 use it as a dedicated Pi appliance. Secrets are runtime environment variables, not
 baked into the image. Do not publish `docker compose config` output: it can include
 resolved credentials. The optional ESP32 backend retains its existing safety latch.
+
+## Repository key errors during build
+
+If an older build reports `SHA1 is not considered secure` or `No binding signature`,
+update the checkout and run the launcher again. It supplies the host keyring before
+building; direct `docker compose build` requires this staging step first. If the
+updated build still fails, run `sudo apt update` on the Pi and share the signature
+error. An outdated host keyring requires an authenticated keyring update; it is not
+a reason to bypass package signature verification.

@@ -23,6 +23,14 @@ if [[ ! -S "/run/user/$MALACHI_UID/pulse/native" ]]; then
     echo 'Host audio service is unavailable. Start PipeWire/PulseAudio for your Pi user first.' >&2
     exit 1
 fi
+# Stage only the OS-managed public archive keyring. Never copy private keys.
+keyring=/usr/share/keyrings/raspberrypi-archive-keyring.gpg
+if [[ ! -r "$keyring" ]]; then
+    echo 'Install/update raspberrypi-archive-keyring on the host before building.' >&2
+    exit 1
+fi
+cp "$keyring" docker/raspberrypi-archive-keyring.gpg
+chmod 644 docker/raspberrypi-archive-keyring.gpg
 mkdir -p logs
 chmod 700 logs
 # Persist only nonsecret interpolation values for reboot and compose management.
