@@ -159,3 +159,23 @@ OpenCV cascade also runs against blank frames on the cloud. The cloud is x86-64,
 not a Pi: apt installation on ARM, actual camera/USB/I2S operation and live ElevenLabs
 conversations need the local checks above. Do not treat an offline smoke test as
 proof of physical Pi readiness.
+
+### Run over SSH without a display
+
+The launcher automatically uses headless mode when neither `DISPLAY` nor
+`WAYLAND_DISPLAY` is set. Camera detection, microphone/speaker conversations,
+periodic image context and ambience run locally on the Pi, with terminal logs.
+No desktop session or graphical window is required:
+
+```bash
+cd ~/Desktop/AI_Possessed_Skull
+bash scripts/run_raspberry_pi.sh --headless
+```
+
+Press Ctrl+C to stop and release the camera/audio devices. Explicit `--headless`
+also works when desktop environment variables are present. Bluetooth still needs
+an active audio service and a selected playback device; headless mode does not
+repair missing speaker routing. On-screen eye animations and underlighting are
+not rendered, and visual tool requests are logged as unavailable. The existing
+ESP32 motor backend retains its explicit resume safety latch; headless operation
+does not automatically arm motors.

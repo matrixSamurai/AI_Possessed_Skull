@@ -9,6 +9,9 @@ def main():
     parser.add_argument(
         "--demo", action="store_true", help="Offline synthetic camera and mock audio"
     )
+    parser.add_argument(
+        "--headless", action="store_true", help="Run without a desktop or dashboard"
+    )
     parser.add_argument("--vision-only", action="store_true", help="Disable conversations")
     parser.add_argument(
         "--smoke-seconds",
@@ -27,6 +30,10 @@ def main():
         settings.conversation_backend = "disabled"
         settings.vision_context_enabled = False
     configure_logging(settings.debug_mode)
+    if args.headless:
+        from malachi.headless import run
+
+        return run(settings, args.demo, args.smoke_seconds)
     from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QApplication
     from malachi.ui.dashboard import Dashboard
