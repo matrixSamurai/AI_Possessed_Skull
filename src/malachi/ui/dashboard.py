@@ -278,7 +278,7 @@ class Dashboard(QMainWindow):
         if self.manager.ambience is not None:
             moving, _ = self.camera.motion_snapshot()
             self.manager.ambience.engine.update(
-                self.face is not None,
+                bool(faces),
                 moving,
                 state in (State.AWAKENING, State.CONVERSING, State.ENDING),
                 self.manager.audio.suppress_mic_during_playback,

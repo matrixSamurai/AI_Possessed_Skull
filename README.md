@@ -114,10 +114,11 @@ This uses your existing ElevenLabs key, with no voice ID. For spoken background 
 use `python -m malachi.ambience.generate --voice-id YOUR_VOICE_ID --phrase "Who dares enter?"`.
 Sound-effect titles are generation prompts; exact saved effects require their audio file.
 
-Set AMBIENCE_ENABLED=true in .env and restart. Faces or sustained scene motion trigger
+Set AMBIENCE_ENABLED=true in .env and restart. A new face entrance triggers
 25 seconds of shuffled low-volume voices, with rearming/cooldown rather than endless
-retriggering. Background clips do not animate the jaw. Speaker-mode conversations
-play them at 30% of their normal volume throughout conversation, and at normal
+retriggering. A burst ends after 25 seconds even during a conversation. Three seconds
+without detected faces rearms the entrance trigger; movement alone does not trigger it. Background clips do not animate the jaw. Speaker-mode conversations
+play them at 30% of their normal volume during the entrance burst, and at normal
 volume outside conversation. Set `AMBIENCE_DURING_CONVERSATION=true` in an existing
 `.env` to enable this behavior.
 Clip generation uses TTS credits; detection/playback reuse local files without API calls.

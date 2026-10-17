@@ -32,10 +32,9 @@ def update(
     e.update(present, moving, conversation, guard, stopped, muted, now)
 
 
-@pytest.mark.parametrize("source", ["face", "motion"])
-def test_trigger_hold_burst_deadline_and_no_repeat(enabled, source):
+def test_trigger_hold_burst_deadline_and_no_repeat(enabled):
     e, clock = engine(enabled)
-    args = {"present": source == "face", "moving": source == "motion"}
+    args = {"present": True}
     update(e, 0, **args)
     update(e, 0.299, **args)
     assert not e.active
@@ -51,15 +50,45 @@ def test_trigger_hold_burst_deadline_and_no_repeat(enabled, source):
 
 def test_quiet_rearm_and_cooldown(enabled):
     e, clock = engine(enabled)
-    update(e, 0, moving=True)
-    update(e, 0.3, moving=True)
-    update(e, 25.3)
-    update(e, 29)
-    update(e, 30, moving=True)
-    update(e, 30.5, moving=True)
+    update(e, 0, present=True)
+    update(e, 0.3, present=True)
+    update(e, 25.3, present=True)
+    update(e, 26)
+    update(e, 29.1)
+    update(e, 30, present=True)
+    update(e, 30.5, present=True)
+    assert not e.active  # Entrance occurred during cooldown: do not queue it.
+    update(e, 40, present=True)
     assert not e.active
-    update(e, 35.4, moving=True)
+    update(e, 41, moving=True)
+    update(e, 44.1, moving=True)  # Motion does not prevent face-free rearming.
+    update(e, 45, present=True)
+    update(e, 45.4, present=True)
     assert e.active
+
+
+def test_motion_and_short_face_losses_do_not_retrigger(enabled):
+    e, clock = engine(enabled)
+    update(e, 0, moving=True)
+    update(e, 5, moving=True)
+    assert not e.active
+    update(e, 6, present=True)
+    update(e, 6.4, present=True)
+    assert e.active
+    update(e, 7)
+    update(e, 8, present=True)
+    update(e, 31.4, present=True)
+    update(e, 50, present=True)
+    assert not e.active and not e.armed
+
+
+def test_second_face_while_occupied_does_not_trigger(enabled):
+    e, clock = engine(enabled)
+    update(e, 0, present=True)
+    update(e, 0.4, present=True)
+    for now in (10, 25.4, 40, 70):
+        update(e, now, present=True)
+    assert not e.active and not e.armed
 
 
 def test_conversation_overlap_with_guard_mute_and_stop(enabled):
@@ -273,16 +302,13 @@ def test_conversation_is_thirty_percent_even_between_replies(enabled):
         e.render(320)
     reduced = e.render(320)[-1]
     assert reduced == pytest.approx(normal * 0.3, rel=0.001)
-    # Continue past the original 25-second burst until the conversation ends.
-    clock[0] = 60
+    # Entrance burst stays bounded even through an ongoing conversation.
+    clock[0] = 26
+    assert not e.render(320).any()
+    update(e, 26, present=True, conversation=True)
+    assert not e.active
     update(e, 60, present=True, conversation=True)
-    assert e.active and e.render(320).any()
     update(e, 61, present=True, conversation=False)
-    clock[0] = 61
-    for _ in range(30):
-        e.render(320)
-    assert e.render(320)[-1] == pytest.approx(normal, rel=0.001)
-    update(e, 86, present=True)
     assert not e.active
 
 
