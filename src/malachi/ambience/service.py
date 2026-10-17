@@ -5,6 +5,7 @@ import time
 import numpy as np
 from malachi.ambience.engine import AmbienceEngine
 from malachi.events import ConversationEvent
+from malachi.conversation.device_audio import SampleRateConverter, stream_options
 
 
 class AmbienceService:
@@ -12,6 +13,9 @@ class AmbienceService:
         self.engine = AmbienceEngine(settings)
         self.emit = emit
         self.fresh_effects = None
+        self.converter = SampleRateConverter(16000, 16000)
+        self.pending = np.zeros(0, np.float32)
+        self.output_rate = 16000
         self.exit = threading.Event()
         self.lock = threading.Lock()
         self.voice_owns_output = False
@@ -36,11 +40,17 @@ class AmbienceService:
         return self.engine.render(frames, foreground, user_speaking)
 
     def _callback(self, data, frames, timing, status):
-        samples = self.engine.render(frames)
-        data[:, 0] = samples
+        needed = max(0, frames - len(self.pending))
+        count = self.converter.input_needed(needed) if needed else 0
+        samples = self.engine.render(count)
+        self.pending = np.concatenate((self.pending, self.converter.process(samples)))
+        output = self.pending[:frames]
+        self.pending = self.pending[frames:]
+        data.fill(0)
+        data[: len(output), :] = output[:, None]
         if np.any(samples):
             delay = max(0, timing.outputBufferDacTime - timing.currentTime)
-            self.last_audible_until = time.monotonic() + delay + frames / 16000 + 0.3
+            self.last_audible_until = time.monotonic() + delay + frames / self.output_rate + 0.3
 
     def _run(self):
         stream = None
@@ -93,12 +103,12 @@ class AmbienceService:
                         try:
                             import sounddevice as sd
 
+                            options = stream_options(sd, self.engine.settings, "output")
+                            self.output_rate = options["samplerate"]
+                            self.converter = SampleRateConverter(16000, self.output_rate)
+                            self.pending = np.zeros(0, np.float32)
                             stream = sd.OutputStream(
-                                samplerate=16000,
-                                channels=1,
-                                dtype="float32",
-                                blocksize=320,
-                                latency="high",
+                                **options,
                                 callback=self._callback,
                             )
                             stream.start()

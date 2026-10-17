@@ -200,7 +200,11 @@ def test_idle_output_handover_is_exclusive_and_shutdown_clean(enabled, tmp_path)
         def close(self):
             self.active = False
 
-    fake = SimpleNamespace(OutputStream=Stream)
+    fake = SimpleNamespace(
+        OutputStream=Stream,
+        query_devices=lambda *a: {"default_samplerate": 16000, "max_output_channels": 1},
+        check_output_settings=lambda **kw: None,
+    )
     with patch.dict(sys.modules, {"sounddevice": fake}):
         service = AmbienceService(enabled, lambda event: None)
         deadline = time.monotonic() + 2
@@ -233,6 +237,11 @@ def test_background_handover_keeps_acoustic_tail_guard(enabled):
     clock[0] = 1
     service.engine = e
     service.last_audible_until = 0
+    from malachi.conversation.device_audio import SampleRateConverter
+
+    service.converter = SampleRateConverter(16000, 16000)
+    service.pending = np.zeros(0, np.float32)
+    service.output_rate = 16000
     data = np.zeros((320, 1), np.float32)
     before = time.monotonic()
     service._callback(data, 320, SimpleNamespace(outputBufferDacTime=1.1, currentTime=1), False)

@@ -11,6 +11,14 @@ class Settings(BaseSettings):
     app_mode: str = "development"
     motion_backend: Literal["simulation", "esp32"] = "simulation"
     conversation_backend: Literal["mock", "elevenlabs", "disabled"] = "mock"
+    camera_backend: Literal["auto", "opencv", "picamera2"] = "auto"
+    face_backend: Literal["auto", "mediapipe", "opencv"] = "auto"
+    face_cascade_path: str = ""
+    face_opencv_max_width: int = Field(960, ge=320, le=1920)
+    face_opencv_min_size: int = Field(24, ge=16, le=100)
+    face_opencv_min_neighbors: int = Field(5, ge=3, le=12)
+    audio_input_device: str | None = None
+    audio_output_device: str | None = None
     camera_index: int = Field(0, ge=0, le=20)
     camera_fps: int = Field(20, ge=5, le=60)
     camera_width: int = Field(1280, ge=320, le=1920)

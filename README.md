@@ -265,3 +265,12 @@ violet, amber, white, cyan or off independently of the eyes, with brightness,
 steady/breathing/ember patterns and temporary duration. Register its
 [tool definition](docs/tools/set_underlighting.json) in ElevenLabs; the
 [lighting guide](docs/under-skull-lighting.md) includes field values and prompt text.
+
+## Raspberry Pi 5 branch
+
+For the Pi's own ribbon/USB camera, microphone and speaker, use the `raspberry-pi5`
+branch and follow [Raspberry Pi setup](docs/raspberry-pi.md). It includes a Pi OS
+installer, Picamera2 capture, ARM-friendly face detection, separate audio device
+selection and conversion for native 44.1/48 kHz audio devices. Existing desktop
+animations, ambience, image context and agent tools remain available. Actual Pi
+hardware needs local validation; no Pi was attached to the cloud test environment.

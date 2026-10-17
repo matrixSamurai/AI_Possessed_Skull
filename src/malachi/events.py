@@ -11,6 +11,7 @@ class Face(BaseModel):
     pitch: float
     confidence: float = Field(ge=0, le=1)
     stable: bool = False
+    pose_available: bool = True
 
 
 class ConversationEvent(BaseModel):

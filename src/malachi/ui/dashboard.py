@@ -369,10 +369,20 @@ class Dashboard(QMainWindow):
             f"{self.machine.reason}"
         )
         if self.face:
+            pose = (
+                f"yaw {self.face.yaw:+.1f}° / pitch {self.face.pitch:+.1f}°"
+                if self.face.pose_available
+                else "frontal face; head pose unavailable"
+            )
+            detection = (
+                f"detection threshold ≥{self.settings.face_min_detection_confidence:.2f} (not a probability)"
+                if self.face.pose_available
+                else "OpenCV cascade; no confidence probability"
+            )
             self.face_label.setText(
                 f"Target #{self.face.track_id}  •  ({self.face.center_x:.2f}, {self.face.center_y:.2f})"
-                f"  •  yaw {self.face.yaw:+.1f}° / pitch {self.face.pitch:+.1f}°\n"
-                f"{'Stable track' if self.face.stable else 'New track'}  •  detection threshold ≥{self.settings.face_min_detection_confidence:.2f} (not a probability)"
+                f"  •  {pose}\n"
+                f"{'Stable track' if self.face.stable else 'New track'}  •  {detection}"
             )
         else:
             self.face_label.setText(error or "No visitor • local monitoring")
