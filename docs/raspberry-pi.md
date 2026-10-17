@@ -179,3 +179,14 @@ repair missing speaker routing. On-screen eye animations and underlighting are
 not rendered, and visual tool requests are logged as unavailable. The existing
 ESP32 motor backend retains its explicit resume safety latch; headless operation
 does not automatically arm motors.
+
+### Intermittent face detection
+
+Startup now preserves the greeting countdown across geometric tracking-ID changes
+and brief missed detections. `FACE_STARTUP_GRACE_SECONDS=1.25` controls the allowed
+startup gap (0–5 seconds); the larger of this and `FACE_DROPOUT_SECONDS` applies.
+A current detected face is still required to start a conversation. A longer
+observed absence resets qualification; looking away when head pose is available
+also resets the facing countdown. Active conversations retain their separate
+`VISITOR_ABSENCE_TIMEOUT_SECONDS` policy. These tolerances do not fix camera I/O
+faults or make OpenCV detect faces in darkness.
