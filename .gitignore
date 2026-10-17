@@ -16,3 +16,4 @@ sdkconfig.old
 assets/*.sha256
 
 assets/ambience/
+docker/pi-host.env

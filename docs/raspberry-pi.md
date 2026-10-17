@@ -224,3 +224,6 @@ After the limit, playback must start and then settle for 1.5 seconds before clos
 to avoid stopping on a brief speech pause. Existing inactivity, absence and maximum
 session timers still apply and may close a session earlier. This does not schedule
 three prompts: proactive follow-up behavior is controlled by the ElevenLabs agent.
+
+For a headless container with reboot startup and process restart, see
+[Docker on Pi 5](docker-pi.md).

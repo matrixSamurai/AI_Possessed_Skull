@@ -1,0 +1,27 @@
+# Build on the Pi 5: Raspberry Pi camera packages are ARM64 and OS-specific.
+FROM debian:trixie-slim
+ARG TARGETARCH
+RUN test "$TARGETARCH" = arm64
+ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 \
+    PATH=/opt/malachi-venv/bin:$PATH
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl gnupg && \
+    curl -fsSL https://archive.raspberrypi.com/debian/raspberrypi.gpg.key \
+    | gpg --dearmor -o /usr/share/keyrings/raspberrypi.gpg && \
+    echo 'deb [arch=arm64 signed-by=/usr/share/keyrings/raspberrypi.gpg] https://archive.raspberrypi.com/debian/ trixie main' \
+    > /etc/apt/sources.list.d/raspberrypi.list && \
+    apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-venv python3-pip python3-numpy python3-opencv opencv-data \
+    python3-picamera2 python3-libcamera libportaudio2 libsndfile1 \
+    libasound2-plugins pulseaudio-utils && \
+    rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY pyproject.toml README.md ./
+COPY src ./src
+RUN python3 -m venv --system-site-packages /opt/malachi-venv && \
+    pip install --no-cache-dir '.[conversation]' && \
+    python -c 'import cv2,numpy,libcamera,picamera2,sounddevice,malachi'
+COPY assets/ambience_library ./assets/ambience_library
+COPY docker/asound.conf /etc/asound.conf
+STOPSIGNAL SIGTERM
+CMD ["python", "-X", "faulthandler", "-m", "malachi.main", "--headless"]
