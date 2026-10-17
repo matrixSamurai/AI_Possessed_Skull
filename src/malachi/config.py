@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     face_opencv_min_neighbors: int = Field(5, ge=3, le=12)
     audio_input_device: str | None = None
     audio_output_device: str | None = None
+    camera_stream_enabled: bool = False
+    camera_stream_host: str = "0.0.0.0"
+    camera_stream_port: int = Field(8080, ge=1, le=65535)
+    camera_stream_fps: int = Field(10, ge=1, le=20)
     camera_index: int = Field(0, ge=0, le=20)
     camera_fps: int = Field(20, ge=5, le=60)
     camera_width: int = Field(1280, ge=320, le=1920)

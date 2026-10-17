@@ -274,3 +274,8 @@ installer, Picamera2 capture, ARM-friendly face detection, separate audio device
 selection and conversion for native 44.1/48 kHz audio devices. Existing desktop
 animations, ambience, image context and agent tools remain available. Actual Pi
 hardware needs local validation; no Pi was attached to the cloud test environment.
+
+## iPhone camera viewer
+
+See [same-Wi-Fi iPhone streaming setup](docs/ios-camera.md) for the optional shared-camera
+endpoint and the separate native SwiftUI `matrixSamurai/MALACHI-iOS` app.

@@ -21,10 +21,19 @@ class CameraService:
         self.motion_score = 0.0
         self.stop_event = threading.Event()
         self.thread = None
+        self.stream = None
 
     def start(self):
         if self.thread and self.thread.is_alive():
             return
+        if self.settings.camera_stream_enabled and self.stream is None:
+            from malachi.vision.stream import CameraStream
+
+            self.stream = CameraStream(
+                self, self.settings.camera_stream_host,
+                self.settings.camera_stream_port, self.settings.camera_stream_fps,
+            )
+            self.stream.start()
         self.stop_event.clear()
         self.thread = threading.Thread(target=self._run, daemon=True, name="camera")
         self.thread.start()
@@ -33,6 +42,9 @@ class CameraService:
         self.stop_event.set()
         if self.thread:
             self.thread.join(timeout=2)
+        if self.stream is not None:
+            self.stream.stop()
+            self.stream = None
         with self.lock:
             self.face = None
             self.faces = []
