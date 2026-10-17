@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     serial_port: str = ""
     serial_baudrate: int = Field(115200, gt=0)
     debug_mode: bool = False
+    log_directory: Path = Path("logs")
+    log_retention_days: float = Field(3, gt=0, le=365)
+    diagnostic_capture_enabled: bool = True
     audio_playback_buffer_ms: int = Field(120, ge=0, le=500)
     audio_playback_queue_seconds: float = Field(30, ge=15, le=60)
     audio_playback_max_wait_ms: int = Field(250, ge=20, le=1000)

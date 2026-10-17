@@ -21,6 +21,7 @@ class CameraService:
         self.motion_score = 0.0
         self.stop_event = threading.Event()
         self.thread = None
+        self.archive = None
 
     def start(self):
         if self.thread and self.thread.is_alive():
@@ -28,9 +29,17 @@ class CameraService:
         self.stop_event.clear()
         self.thread = threading.Thread(target=self._run, daemon=True, name="camera")
         self.thread.start()
+        if self.settings.diagnostic_capture_enabled and not self.demo:
+            from malachi.telemetry.archive import CameraArchive
+
+            self.archive = CameraArchive(self.settings, self.interaction_snapshot)
+            self.archive.start()
 
     def stop(self):
         self.stop_event.set()
+        if self.archive:
+            self.archive.stop()
+            self.archive = None
         if self.thread:
             self.thread.join(timeout=2)
         with self.lock:

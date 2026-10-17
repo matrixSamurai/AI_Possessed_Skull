@@ -29,7 +29,7 @@ def main():
     if args.vision_only:
         settings.conversation_backend = "disabled"
         settings.vision_context_enabled = False
-    configure_logging(settings.debug_mode)
+    configure_logging(settings.debug_mode, settings.log_directory, settings.log_retention_days)
     if args.headless:
         from malachi.headless import run
 

@@ -190,3 +190,26 @@ observed absence resets qualification; looking away when head pose is available
 also resets the facing countdown. Active conversations retain their separate
 `VISITOR_ABSENCE_TIMEOUT_SECONDS` policy. These tolerances do not fix camera I/O
 faults or make OpenCV detect faces in darkness.
+
+### Local diagnostic logs and minute snapshots
+
+The app writes JSON event logs and a JPEG camera snapshot every 60 seconds into
+`logs/` under the project working directory. The first diagnostic image is taken
+one minute after camera startup; this is separate from ElevenLabs image timing.
+Capture happens even outside conversations, provided the camera has a fresh frame.
+Missing/stopped camera frames are skipped rather than saving an old image.
+Images are written by a background worker; no second camera is opened.
+
+```dotenv
+LOG_DIRECTORY=logs
+LOG_RETENTION_DAYS=3
+DIAGNOSTIC_CAPTURE_ENABLED=true
+```
+
+Event logs rotate every minute. Startup and periodic cleanup remove application
+log/image files older than 72 hours based on modification time. While the app is
+stopped no cleanup runs; expired files are removed at next startup. Unrelated files
+and symlinks are not deleted. The logs folder is excluded from Git. These images
+contain the scene and visitors, so keep the folder private. Native libcamera stderr
+messages are still printed to the terminal; the JSON files contain MALACHI's Python
+application logs. Set `DIAGNOSTIC_CAPTURE_ENABLED=false` to stop saving images.
