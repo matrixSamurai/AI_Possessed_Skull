@@ -11,6 +11,14 @@ class Settings(BaseSettings):
     app_mode: str = "development"
     motion_backend: Literal["simulation", "esp32"] = "simulation"
     conversation_backend: Literal["mock", "elevenlabs", "disabled"] = "mock"
+    camera_backend: Literal["auto", "opencv", "picamera2"] = "auto"
+    face_backend: Literal["auto", "mediapipe", "opencv"] = "auto"
+    face_cascade_path: str = ""
+    face_opencv_max_width: int = Field(960, ge=320, le=1920)
+    face_opencv_min_size: int = Field(24, ge=16, le=100)
+    face_opencv_min_neighbors: int = Field(5, ge=3, le=12)
+    audio_input_device: str | None = None
+    audio_output_device: str | None = None
     camera_index: int = Field(0, ge=0, le=20)
     camera_fps: int = Field(20, ge=5, le=60)
     camera_width: int = Field(1280, ge=320, le=1920)
@@ -23,6 +31,7 @@ class Settings(BaseSettings):
     face_model_path: Path = Path("assets/face_landmarker.task")
     face_detection_hold_seconds: float = Field(0.3, gt=0)
     face_facing_hold_seconds: float = Field(2, gt=0)
+    face_startup_grace_seconds: float = Field(1.25, ge=0, le=5)
     face_dropout_seconds: float = Field(0.25, ge=0, le=1)
     face_yaw_threshold: float = Field(25, gt=0, le=90)
     face_pitch_threshold: float = Field(20, gt=0, le=90)
@@ -33,6 +42,7 @@ class Settings(BaseSettings):
     eye_max_velocity: float = Field(2, gt=0)
     eye_max_pan_degrees: float = Field(20, gt=0, le=30)
     eye_max_tilt_degrees: float = Field(15, gt=0, le=25)
+    max_unanswered_agent_turns: int = Field(3, ge=1, le=20)
     conversation_idle_timeout_seconds: float = Field(30, gt=0)
     visitor_absence_timeout_seconds: float = Field(20, gt=0)
     max_session_duration_seconds: float = Field(180, gt=0)
@@ -48,6 +58,9 @@ class Settings(BaseSettings):
     serial_port: str = ""
     serial_baudrate: int = Field(115200, gt=0)
     debug_mode: bool = False
+    log_directory: Path = Path("logs")
+    log_retention_days: float = Field(3, gt=0, le=365)
+    diagnostic_capture_enabled: bool = True
     audio_playback_buffer_ms: int = Field(120, ge=0, le=500)
     audio_playback_queue_seconds: float = Field(30, ge=15, le=60)
     audio_playback_max_wait_ms: int = Field(250, ge=20, le=1000)

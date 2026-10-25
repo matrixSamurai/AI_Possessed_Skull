@@ -188,3 +188,26 @@ suppresses secondary transmission failures only when stopping; actual network fa
 still emit an error. Timed-out sends cancel their queued future. Fresh-effect workers
 are stopped during service cleanup. No live ElevenLabs call or Mac camera/audio test
 was made in cloud; runtime provider and device behavior require local verification.
+
+## Raspberry Pi 5 branch
+
+`raspberry-pi5` adds local Picamera2/USB capture, ARM/Python 3.11–3.13 packaging,
+OpenCV frontal-face fallback and selectable native microphone/speaker devices.
+Validated in x86-64 cloud: **154 tests passed** (two existing upstream deprecation
+warnings), Ruff lint/format, shell syntax, editable build/install, pip dependency
+consistency, ARM dependency marker evaluation for Python 3.11 and 3.13, and real
+OpenCV cascade inference on a blank HD frame. The Pi installer safely refuses this
+non-Pi host before attempting apt/sudo. A 12-second offscreen desktop demo also ran.
+
+New tests cover CSI configuration/autofocus/cleanup and BGR bytes, capture backend
+selection, normalized multi-face cascade output with unavailable head pose, native
+stereo 48 kHz format negotiation, continuous chunk-independent 16/44.1/48 kHz
+conversion, low-pass alias suppression, playback pitch, microphone downmix, and
+interruption clearing. Existing mock-device tests now provide realistic format
+negotiation data. The resampler uses bounded state and keeps ElevenLabs PCM at
+16 kHz while talking to physical devices at their supported rates.
+
+Actual Pi apt installation, ARM GUI packages, camera capture, live speaker/microphone,
+I2S driver/overlay setup and ElevenLabs service behavior are **not verified on hardware**.
+Run the device checks in docs/raspberry-pi.md on the user's Pi. No API credentials,
+raw camera frames or microphone recordings were copied into the repository.

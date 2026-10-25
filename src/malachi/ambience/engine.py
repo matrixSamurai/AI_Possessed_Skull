@@ -81,22 +81,19 @@ class AmbienceEngine:
     def update(self, present, moving, conversation, guard_enabled, stopped, muted, now):
         with self.lock:
             self.muted = muted
-            was_conversation = self.conversation
             self.conversation = conversation
-            if was_conversation and not conversation and self.active:
-                self.deadline = now + self.settings.ambience_duration_seconds
             if stopped or not self.settings.ambience_enabled:
                 self.stop()
                 self.qualifying = self.absent = None
                 self.armed = True
                 self.status = "Stopped" if stopped else "Disabled"
                 return
-            if self.active and not conversation and now >= self.deadline:
+            if self.active and now >= self.deadline:
                 self.stop()
                 self.cooldown_until = now + self.settings.ambience_cooldown_seconds
             blocked = conversation and not self.settings.ambience_during_conversation
             self.paused = blocked
-            detected = present or moving
+            detected = present  # Only a face entering the scene triggers ambience.
             if not detected:
                 self.qualifying = None
                 if self.absent is None:
@@ -109,17 +106,23 @@ class AmbienceEngine:
                     self.qualifying = now
                 if (
                     self.armed
-                    and not self.active
-                    and not blocked
-                    and now >= self.cooldown_until
                     and now - self.qualifying >= self.settings.ambience_trigger_hold_seconds
-                    and self.clips
                 ):
-                    self.started, self.deadline = now, now + self.settings.ambience_duration_seconds
-                    self.active, self.armed = True, False
-                    self.current = None
-                    self.position = self.gap_samples = 0
-                    self.duck_gain = 1.0
+                    # Consume this entrance even if playback is busy or cooling down.
+                    # Never start a delayed burst for someone who remained in view.
+                    self.armed = False
+                    if (
+                        not self.active
+                        and not blocked
+                        and now >= self.cooldown_until
+                        and self.clips
+                    ):
+                        self.started = now
+                        self.deadline = now + self.settings.ambience_duration_seconds
+                        self.active = True
+                        self.current = None
+                        self.position = self.gap_samples = 0
+                        self.duck_gain = 1.0
             if not self.clips:
                 self.status = "No clips: generate or add local WAV files"
             elif blocked:
@@ -131,13 +134,13 @@ class AmbienceEngine:
                     else f"Playing background voices (full volume; {max(0, self.deadline - now):.0f}s left)"
                 )
             else:
-                self.status = "Ready: waiting for face or sustained motion"
+                self.status = "Ready: waiting for a new face entrance"
 
     def _choose(self):
         if not self.bag:
             self.bag = list(range(len(self.clips)))
             self.rng.shuffle(self.bag)
-            if len(self.bag) > 1 and self.bag[-1] == self.last_clip:
+            if len(self.bag) > 1 and self.bag[-1] != self.last_clip:
                 self.bag[0], self.bag[-1] = self.bag[-1], self.bag[0]
         index = self.bag.pop()
         self.last_clip = index
@@ -148,12 +151,7 @@ class AmbienceEngine:
         with self.lock:
             out = np.zeros(frames, np.float32)
             now = self.clock()
-            if (
-                not self.active
-                or self.paused
-                or self.muted
-                or (not self.conversation and now >= self.deadline)
-            ):
+            if not self.active or self.paused or self.muted or now >= self.deadline:
                 return out
             offset = 0
             while offset < frames:
@@ -183,7 +181,7 @@ class AmbienceEngine:
             gain = np.linspace(self.duck_gain, next_gain, frames, dtype=np.float32)
             self.duck_gain = next_gain
             # Fade burst in/out, independent of clip boundaries.
-            tail = 1.0 if self.conversation else (self.deadline - now) / 0.15
+            tail = (self.deadline - now) / 0.15
             envelope = max(0, min(1, (now - self.started) / 0.1, tail))
             out *= self.settings.ambience_volume * envelope * gain
             return out

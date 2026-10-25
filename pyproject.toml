@@ -5,10 +5,15 @@ build-backend = "setuptools.build_meta"
 name = "malachi-skull"
 version = "0.1.0"
 description = "MALACHI autonomous animatronic skull, with an offline desktop simulator"
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.11,<3.14"
 dependencies = [
- "numpy==1.26.4", "opencv-contrib-python==4.11.0.86", "mediapipe==0.10.21",
- "PySide6==6.8.3", "pydantic-settings==2.8.1", "sounddevice==0.5.1", "pyserial==3.5"
+ # ARM camera/GUI packages come from Raspberry Pi OS; see setup_raspberry_pi.sh.
+ "numpy==1.26.4; platform_machine != 'aarch64' and python_version < '3.13'",
+ "numpy>=1.24,<3; platform_machine == 'aarch64' or python_version >= '3.13'",
+ "opencv-contrib-python==4.11.0.86; platform_machine != 'aarch64'",
+ "mediapipe==0.10.21; platform_machine != 'aarch64' and python_version < '3.13'",
+ "PySide6==6.8.3; platform_machine != 'aarch64'",
+ "pydantic-settings==2.8.1", "sounddevice==0.5.1", "pyserial==3.5"
 ]
 [project.optional-dependencies]
 conversation = ["elevenlabs==2.71.0"]

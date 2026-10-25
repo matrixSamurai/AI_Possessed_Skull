@@ -16,3 +16,5 @@ sdkconfig.old
 assets/*.sha256
 
 assets/ambience/
+docker/pi-host.env
+docker/raspberrypi-archive-keyring.gpg

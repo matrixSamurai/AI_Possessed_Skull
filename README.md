@@ -114,10 +114,11 @@ This uses your existing ElevenLabs key, with no voice ID. For spoken background 
 use `python -m malachi.ambience.generate --voice-id YOUR_VOICE_ID --phrase "Who dares enter?"`.
 Sound-effect titles are generation prompts; exact saved effects require their audio file.
 
-Set AMBIENCE_ENABLED=true in .env and restart. Faces or sustained scene motion trigger
+Set AMBIENCE_ENABLED=true in .env and restart. A new face entrance triggers
 25 seconds of shuffled low-volume voices, with rearming/cooldown rather than endless
-retriggering. Background clips do not animate the jaw. Speaker-mode conversations
-play them at 30% of their normal volume throughout conversation, and at normal
+retriggering. A burst ends after 25 seconds even during a conversation. Three seconds
+without detected faces rearms the entrance trigger; movement alone does not trigger it. Background clips do not animate the jaw. Speaker-mode conversations
+play them at 30% of their normal volume during the entrance burst, and at normal
 volume outside conversation. Set `AMBIENCE_DURING_CONVERSATION=true` in an existing
 `.env` to enable this behavior.
 Clip generation uses TTS credits; detection/playback reuse local files without API calls.
@@ -265,3 +266,12 @@ violet, amber, white, cyan or off independently of the eyes, with brightness,
 steady/breathing/ember patterns and temporary duration. Register its
 [tool definition](docs/tools/set_underlighting.json) in ElevenLabs; the
 [lighting guide](docs/under-skull-lighting.md) includes field values and prompt text.
+
+## Raspberry Pi 5 branch
+
+For the Pi's own ribbon/USB camera, microphone and speaker, use the `raspberry-pi5`
+branch and follow [Raspberry Pi setup](docs/raspberry-pi.md). It includes a Pi OS
+installer, Picamera2 capture, ARM-friendly face detection, separate audio device
+selection and conversion for native 44.1/48 kHz audio devices. Existing desktop
+animations, ambience, image context and agent tools remain available. Actual Pi
+hardware needs local validation; no Pi was attached to the cloud test environment.

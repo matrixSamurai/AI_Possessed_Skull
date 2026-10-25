@@ -21,6 +21,7 @@ class CameraService:
         self.motion_score = 0.0
         self.stop_event = threading.Event()
         self.thread = None
+        self.archive = None
 
     def start(self):
         if self.thread and self.thread.is_alive():
@@ -28,9 +29,17 @@ class CameraService:
         self.stop_event.clear()
         self.thread = threading.Thread(target=self._run, daemon=True, name="camera")
         self.thread.start()
+        if self.settings.diagnostic_capture_enabled and not self.demo:
+            from malachi.telemetry.archive import CameraArchive
+
+            self.archive = CameraArchive(self.settings, self.interaction_snapshot)
+            self.archive.start()
 
     def stop(self):
         self.stop_event.set()
+        if self.archive:
+            self.archive.stop()
+            self.archive = None
         if self.thread:
             self.thread.join(timeout=2)
         with self.lock:
@@ -74,9 +83,9 @@ class CameraService:
         movement = MotionDetector(self.settings)
         try:
             if not self.demo:
-                from malachi.vision.face_detector import FaceDetector
+                from malachi.vision.detector_factory import create_detector
 
-                detector = FaceDetector(self.settings.face_model_path, self.settings)
+                detector = create_detector(self.settings)
             while not self.stop_event.is_set():
                 started = time.monotonic()
                 if self.demo:
@@ -109,11 +118,20 @@ class CameraService:
                     )
                 else:
                     if cap is None:
-                        cap = cv2.VideoCapture(self.settings.camera_index)
-                        cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.settings.camera_width)
-                        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.settings.camera_height)
-                        cap.set(cv2.CAP_PROP_FPS, self.settings.camera_fps)
-                    ok, frame = cap.read()
+                        from malachi.vision.capture import open_capture
+
+                        try:
+                            cap = open_capture(self.settings)
+                        except Exception as exc:
+                            with self.lock:
+                                self.face, self.faces = None, []
+                                self.error = f"Camera unavailable ({type(exc).__name__}); retrying"
+                            self.stop_event.wait(2)
+                            continue
+                    try:
+                        ok, frame = cap.read()
+                    except Exception:
+                        ok, frame = False, None
                     if not ok:
                         cap.release()
                         cap = None

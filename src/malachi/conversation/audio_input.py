@@ -3,6 +3,7 @@ import threading
 import time
 import numpy as np
 from malachi.events import ConversationEvent
+from malachi.conversation.device_audio import SampleRateConverter, stream_options
 
 
 class AudioDuplex:
@@ -10,6 +11,11 @@ class AudioDuplex:
 
     def __init__(self, playback, emit, jaw_emit):
         self.playback, self.emit, self.jaw_emit = playback, emit, jaw_emit
+        self.input_converter = SampleRateConverter(16000, 16000)
+        self.output_converter = SampleRateConverter(16000, 16000)
+        self.output_pending = np.zeros(0, np.float32)
+        self.output_rate = 16000
+        self.output_generation = playback.generation
         self.mic_muted = False
         self.opening_pending = False
         self.ambience = None
@@ -41,21 +47,19 @@ class AudioDuplex:
                 self.speaker_guard_until = max(
                     self.speaker_guard_until, self.ambience.release_output()
                 )
+            input_options = stream_options(sd, self.playback.settings, "input")
+            output_options = stream_options(sd, self.playback.settings, "output")
+            self.input_converter = SampleRateConverter(input_options["samplerate"], 16000)
+            self.output_converter = SampleRateConverter(16000, output_options["samplerate"])
+            self.output_pending = np.zeros(0, np.float32)
+            self.output_rate = output_options["samplerate"]
             self.output_stream = sd.OutputStream(
-                samplerate=16000,
-                channels=1,
-                dtype="float32",
-                blocksize=320,
-                latency="high",
+                **output_options,
                 callback=self._output,
                 finished_callback=self._finished,
             )
             self.input = sd.InputStream(
-                samplerate=16000,
-                channels=1,
-                dtype="int16",
-                blocksize=320,
-                latency="high",
+                **input_options,
                 callback=self._input,
                 finished_callback=self._finished,
             )
@@ -73,7 +77,11 @@ class AudioDuplex:
             self.emit(ConversationEvent(kind="error", detail="Audio device stopped unexpectedly"))
 
     def _input(self, data, frames, timing, status):
-        audio = data.copy()
+        mono = data.astype(np.float32).mean(axis=1)
+        converted = self.input_converter.process(mono)
+        if not len(converted):
+            return
+        audio = np.clip(converted, -32768, 32767).astype("<i2")
         now = time.monotonic()
         guarded = self.suppress_mic_during_playback and (
             (self.playback.samples > 0 and not self.playback.muted)
@@ -102,20 +110,33 @@ class AudioDuplex:
             self.emit(ConversationEvent(kind="summary", detail="audio input status"))
 
     def _output(self, data, frames, timing, status):
-        samples, jaw, generation = self.playback.render(frames)
+        if self.output_generation != self.playback.generation:
+            self.output_converter = SampleRateConverter(16000, self.output_rate)
+            self.output_pending = np.zeros(0, np.float32)
+            self.output_generation = self.playback.generation
+        needed = max(0, frames - len(self.output_pending))
+        source_frames = self.output_converter.input_needed(needed) if needed else 0
+        samples, jaw, generation = self.playback.render(source_frames)
         agent_audible = bool(np.any(samples))
         # Only agent PCM drives jaw/speaking telemetry. Background voices are a
         # separate quiet channel mixed here so only one device output is active.
         if self.ambience is not None:
-            background = self.ambience.render(frames, self.playback.speaking, self.user_speaking)
+            background = self.ambience.render(
+                source_frames, self.playback.speaking, self.user_speaking
+            )
             samples = np.clip(samples + background, -1, 1)
-        data[:, 0] = samples
+        converted = self.output_converter.process(samples)
+        self.output_pending = np.concatenate((self.output_pending, converted))
+        output = self.output_pending[:frames]
+        self.output_pending = self.output_pending[frames:]
+        data.fill(0)
+        data[: len(output), :] = output[:, None]
         # Schedule jaw for actual DAC presentation time, including device buffering.
         delay = max(0, timing.outputBufferDacTime - timing.currentTime)
         now = time.monotonic()
         self.jaw_emit(jaw, now + delay, generation)
         if agent_audible:
-            self.speaker_guard_until = now + delay + frames / 16000 + 0.3
+            self.speaker_guard_until = now + delay + frames / self.output_rate + 0.3
         speaking = self.playback.speaking
         if speaking != self.agent_speaking:
             self.agent_speaking = speaking

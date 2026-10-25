@@ -11,6 +11,7 @@ class Face(BaseModel):
     pitch: float
     confidence: float = Field(ge=0, le=1)
     stable: bool = False
+    pose_available: bool = True
 
 
 class ConversationEvent(BaseModel):
@@ -19,6 +20,8 @@ class ConversationEvent(BaseModel):
         "closed",
         "error",
         "activity",
+        "user_response",
+        "agent_response",
         "user_start",
         "user_end",
         "agent_start",

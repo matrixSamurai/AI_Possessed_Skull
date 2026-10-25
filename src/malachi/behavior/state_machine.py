@@ -42,6 +42,19 @@ class StateMachine:
     def tick(self, face, now, people_present=None):
         # Occupancy is independent of the selected eye-tracking target.
         present = face is not None if people_present is None else people_present
+        # Startup follows scene occupancy, not unstable geometric tracking IDs.
+        # Check the previous observation before overwriting it on reacquisition.
+        grace = max(self.settings.face_dropout_seconds, self.settings.face_startup_grace_seconds)
+        startup = self.state in (State.IDLE, State.WATCHING, State.STALKING)
+        if (
+            startup
+            and (not present or self.absent_since is not None)
+            and self.last_seen is not None
+            and now - self.last_seen > grace
+        ):
+            self.detected_since = self.facing_since = None
+            self.target_id = None
+            self.transition(State.IDLE, "visitor detection expired", now)
         if present:
             self.last_seen = now
             self.absent_since = None
@@ -49,11 +62,7 @@ class StateMachine:
                 self.detected_since = now
         elif self.absent_since is None:
             self.absent_since = now
-        dropout = (
-            not present
-            and self.last_seen is not None
-            and now - self.last_seen <= self.settings.face_dropout_seconds
-        )
+        dropout = not present and self.last_seen is not None and now - self.last_seen <= grace
         if self.state == State.COOLDOWN:
             if (
                 self.absent_since is not None
@@ -81,11 +90,10 @@ class StateMachine:
             return
         if not present:
             return
-        if face.track_id != self.target_id:
-            self.target_id = face.track_id
-            self.detected_since = now
-            self.facing_since = None
-            self.transition(State.IDLE, "new geometric target", now)
+        # Occupancy may be known while no tracking target is selected.
+        if face is None:
+            return
+        self.target_id = face.track_id
         if now - self.detected_since < self.settings.face_detection_hold_seconds:
             return
         if self.state == State.IDLE:

@@ -1,6 +1,6 @@
 # Detection-triggered scary background voices
 
-MALACHI plays short effects when a face or sustained scene motion is detected.
+MALACHI plays short effects when a face enters a previously clear frame.
 Fresh-effects mode generates one new ElevenLabs effect per burst while cached clips
 provide immediate playback. Local-only mode shuffles previously generated WAV clips.
 
@@ -72,19 +72,18 @@ AMBIENCE_VOLUME=0.15
 AMBIENCE_DURING_CONVERSATION=true
 ```
 
-- Sustained face presence or scene motion for 300 ms triggers a 25-second playback
+- A new face entrance sustained for 300 ms triggers a 25-second playback
   window. AMBIENCE_DURATION_SECONDS accepts 20–30 seconds.
 - Clips play in shuffled order with short randomized gaps; each clip is used before
   the shuffle bag repeats, including across new playback windows. Immediate repeats across bag boundaries are avoided when
   there are multiple clips.
 - Clip endpoints and burst boundaries fade; background volume is separate from voice.
 - Continuous detection does not extend a burst or immediately retrigger it. Three
-  seconds without a face/motion rearms detection; after expiry there is a 10-second
+  seconds without a face rearms detection; after expiry there is a 10-second
   cooldown. These values are configurable in .env.
-- The motion trigger uses frame differences, not semantic object recognition. It can
-  respond to shadows/camera shake; global lighting changes are filtered heuristically.
-  It does not identify or track specific moving objects. Tune MOTION_PIXEL_THRESHOLD
-  and MOTION_AREA_THRESHOLD if required; it remains an approximate scene-motion signal.
+- Movement alone does not trigger effects or prevent rearming. Another visitor
+  joining while faces remain visible does not trigger another burst. An entrance
+  during active playback or cooldown is consumed, not queued for delayed playback.
 - Camera stop/stale capture cannot start a new burst. An already triggered window may
   finish. Emergency Stop clears background playback and prevents retriggering until
   explicit resume. Mute speaker mutes background too. The Background voices checkbox
@@ -98,11 +97,11 @@ camera if AMBIENCE_ENABLED=true; it requires no live voice session or TTS reques
 
 ## During conversation
 
-Background effects now continue through AWAKENING, CONVERSING and ENDING at **30%
+An active entrance burst plays through AWAKENING, CONVERSING and ENDING at **30%
 of the configured AMBIENCE_VOLUME**, including pauses between agent replies. Outside
 conversation they use 100% of AMBIENCE_VOLUME. The gain changes smoothly. The usual
-25-second burst remains active for the full conversation, then gets a fresh 25-second
-window at normal volume before stopping. Set AMBIENCE_DURING_CONVERSATION=false if
+25-second burst expires on schedule even during a conversation. Ending a
+conversation does not extend or restart it. Set AMBIENCE_DURING_CONVERSATION=false if
 you explicitly want conversation silence instead.
 
 The Speaker echo guard remains available for the agent's own speech. Background PCM

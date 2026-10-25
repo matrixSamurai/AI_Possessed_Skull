@@ -5,6 +5,7 @@ from malachi.events import ConversationEvent
 def awaken(machine, face):
     machine.tick(face, 0)
     machine.tick(face, 0.3)
+    machine.tick(face, 0.3 + machine.settings.face_facing_hold_seconds / 2)
     machine.tick(face, 0.3 + machine.settings.face_facing_hold_seconds)
 
 
@@ -37,6 +38,7 @@ def test_looking_away_resets_timer(settings, face):
 
 
 def test_dropout_tolerance(settings, face):
+    settings.face_startup_grace_seconds = 0
     m = StateMachine(settings)
     m.tick(face, 0)
     m.tick(face, 0.3)
@@ -69,6 +71,7 @@ def test_emergency_latched(settings, face):
     m = StateMachine(settings)
     m.stop(0)
     m.start(2)
+    m.tick(None, 0.4)
     m.tick(face, 3)
     assert m.state == State.IDLE
     assert m.emergency
@@ -104,16 +107,49 @@ def test_connection_timeout(settings):
     assert m.state == State.ENDING
 
 
-def test_target_switch_resets_qualification(settings, face):
+def test_startup_survives_short_losses_and_tracking_id_changes(settings, face):
     m = StateMachine(settings)
     m.tick(face, 0)
     m.tick(face, 0.3)
-    m.tick(face.model_copy(update={"track_id": 2}), 3.2)
-    assert m.state == State.IDLE and m.facing_since is None
-    m.tick(face.model_copy(update={"track_id": 2}), 3.6)
+    m.tick(None, 0.8)
+    m.tick(face.model_copy(update={"track_id": 2}), 1.1)
+    m.tick(None, 1.8)
     assert m.state == State.STALKING
-    m.tick(face.model_copy(update={"track_id": 2}), 6.7)
+    m.tick(face.model_copy(update={"track_id": 3}), 2.3)
     assert m.state == State.AWAKENING
+    assert m.session_target_id == 3
+
+
+def test_startup_requires_real_detection_and_resets_after_long_absence(settings, face):
+    m = StateMachine(settings)
+    m.tick(face, 0)
+    m.tick(face, 0.3)
+    m.tick(face, 1.5)
+    m.tick(None, 2.4)
+    assert m.state == State.STALKING  # Never greet based on absence alone.
+    m.tick(None, 2.8)
+    assert m.state == State.IDLE
+    assert m.facing_since is None
+    m.tick(face, 3)
+    m.tick(face, 3.31)
+    assert m.state == State.STALKING
+
+
+def test_reacquisition_after_long_gap_with_no_tick_at_expiry(settings, face):
+    m = StateMachine(settings)
+    m.tick(face, 0)
+    m.tick(face, 0.3)
+    m.tick(None, 0.4)
+    m.tick(face, 3)
+    assert m.state == State.IDLE
+    assert m.facing_since is None
+
+
+def test_startup_occupancy_without_selected_face(settings):
+    m = StateMachine(settings)
+    m.tick(None, 0, people_present=True)
+    m.tick(None, 1, people_present=True)
+    assert m.state == State.IDLE
 
 
 def test_tracking_id_changes_do_not_disconnect_active_session(settings, face):

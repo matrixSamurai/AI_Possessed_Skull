@@ -1,0 +1,38 @@
+services:
+  malachi:
+    image: malachi-pi:local
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.pi
+    platform: linux/arm64
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 20s
+    # CSI/libcamera needs media, video, DMA and autofocus devices on the Pi.
+    # Appliance deployment only: this grants broad access to the Pi hardware.
+    privileged: true
+    user: "${MALACHI_UID:-1000}:${MALACHI_GID:-1000}"
+    group_add:
+      - "${MALACHI_AUDIO_GID:-29}"
+      - "${MALACHI_VIDEO_GID:-44}"
+      - "${MALACHI_RENDER_GID:-107}"
+    env_file:
+      - .env
+    environment:
+      HOME: /tmp
+      PULSE_SERVER: unix:/run/host-pulse/native
+      # Prefer names: device indices differ between the host and container.
+      AUDIO_INPUT_DEVICE: "${MALACHI_DOCKER_INPUT_DEVICE:-USB PnP Sound Device}"
+      AUDIO_OUTPUT_DEVICE: "${MALACHI_DOCKER_OUTPUT_DEVICE:-default}"
+      CAMERA_BACKEND: picamera2
+      FACE_BACKEND: opencv
+      LOG_DIRECTORY: /app/logs
+    volumes:
+      - ./logs:/app/logs
+      - /run/udev:/run/udev:ro
+      - /run/user/${MALACHI_UID:-1000}/pulse:/run/host-pulse:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
