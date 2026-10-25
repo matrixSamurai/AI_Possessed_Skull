@@ -140,7 +140,7 @@ class AmbienceEngine:
         if not self.bag:
             self.bag = list(range(len(self.clips)))
             self.rng.shuffle(self.bag)
-            if len(self.bag) > 1 and self.bag[-1] == self.last_clip:
+            if len(self.bag) > 1 and self.bag[-1] != self.last_clip:
                 self.bag[0], self.bag[-1] = self.bag[-1], self.bag[0]
         index = self.bag.pop()
         self.last_clip = index
